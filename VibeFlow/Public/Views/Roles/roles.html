@@ -1,0 +1,44 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Roles - VibeFlow</title>
+    <link rel="stylesheet" href="{% static 'Roles/roles.css' %}">
+</head>
+<body>
+    <div class="card">
+        <h2>➕ Crear Rol</h2>
+        <div id="msg-role" class="msg"></div>
+        <form id="form-role">
+            <div class="form-group">
+                <label>Nombre del rol</label>
+                <input type="text" id="name" required placeholder="Ej: admin, editor, viewer">
+            </div>
+            <div class="form-group">
+                <label>Descripción</label>
+                <textarea id="description" placeholder="Descripción del rol (opcional)"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Crear Rol</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>📋 Lista de Roles</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody id="roles-table"></tbody>
+        </table>
+    </div>
+
+    <script src="{% static 'Roles/roles.js' %}"></script>
+</body>
+</html>

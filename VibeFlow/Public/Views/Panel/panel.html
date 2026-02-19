@@ -1,0 +1,35 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibeFlow - Panel de Administración</title>
+    <link rel="stylesheet" href="{% static 'Panel/panel.css' %}">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="logo">
+            <h1>🎵 VibeFlow</h1>
+            <p>Panel de Administración</p>
+        </div>
+        <nav>
+            <a href="#" class="active" onclick="loadView('users')">
+                <span class="icon">👤</span> Usuarios
+            </a>
+            <a href="#" onclick="loadView('roles')">
+                <span class="icon">🛡️</span> Roles
+            </a>
+            <a href="#" onclick="loadView('userRoles')">
+                <span class="icon">🔗</span> Asignar Roles
+            </a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <iframe id="view-frame" src="/views/users/"></iframe>
+    </main>
+
+    <script src="{% static 'Panel/panel.js' %}"></script>
+</body>
+</html>

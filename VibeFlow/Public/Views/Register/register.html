@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibeFlow – Registro</title>
+    <link rel="stylesheet" href="/static/Register/register.css">
+</head>
+<body>
+    <div class="register-container">
+        <div class="register-card">
+            <h1 class="register-title">🎵 VibeFlow</h1>
+            <p class="register-subtitle">Crea tu cuenta</p>
+
+            <form id="registerForm" autocomplete="off">
+                <div class="form-group">
+                    <label for="username">Usuario</label>
+                    <input type="text" id="username" name="username" placeholder="Elige un nombre de usuario" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" placeholder="tu@email.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Contraseña</label>
+                    <input type="password" id="password" name="password" placeholder="Mínimo 6 caracteres" required minlength="6">
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">Confirmar contraseña</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Repite tu contraseña" required minlength="6">
+                </div>
+
+                <button type="submit" id="btnRegister">Crear cuenta</button>
+
+                <p id="registerMessage" class="register-message"></p>
+            </form>
+
+            <p class="register-link">¿Ya tienes cuenta? <a href="/">Inicia sesión</a></p>
+        </div>
+    </div>
+
+    <script src="/static/Register/register.js"></script>
+</body>
+</html>

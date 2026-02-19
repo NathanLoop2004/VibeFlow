@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'accounts',
 ]
 
 MIDDLEWARE = [
@@ -52,6 +53,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'VibeFlow.Public.Middleware.authMiddleware.AuthMiddleware',
 ]
 
 ROOT_URLCONF = 'VibeFlow.urls'
@@ -59,7 +61,7 @@ ROOT_URLCONF = 'VibeFlow.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'VibeFlow' / 'Public' / 'Views'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -85,7 +87,15 @@ DATABASES = {
         'PASSWORD': os.getenv('DB_PASSWORD', ''),
         'HOST': os.getenv('DB_HOST', ''),
         'PORT': os.getenv('DB_PORT', '6543'),
+        'OPTIONS': {
+            'options': '-c search_path=app',
+        },
     }
+}
+
+# Migraciones centralizadas en Public/Migrations/
+MIGRATION_MODULES = {
+    'accounts': 'VibeFlow.Public.Migrations',
 }
 
 
@@ -124,3 +134,11 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATICFILES_DIRS = [BASE_DIR / 'VibeFlow' / 'Public' / 'Views']
+
+# Permitir iframes (necesario para Simple Browser de VS Code)
+X_FRAME_OPTIONS = 'ALLOWALL'
+
+# Usar sesiones basadas en cookies (signed cookies) para evitar
+# problemas de search_path con django_session en el pooler de Supabase
+SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'

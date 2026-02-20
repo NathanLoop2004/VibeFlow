@@ -11,6 +11,8 @@ GOOGLE_CLIENT_ID = os.getenv(
     '267804810810-2n76u7dmoq9v8kbvgjfn2g23eqsm16ks.apps.googleusercontent.com'
 )
 
+GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')
+
 
 def verify_google_token(credential):
     """
@@ -90,4 +92,52 @@ def verify_access_token(access_token):
         }
     except Exception as e:
         print(f"[Google Auth] Error verify_access_token: {e}")
+        return None
+
+
+def exchange_code_for_user(code, redirect_uri):
+    """
+    Intercambia un authorization code de Google por un access_token,
+    luego obtiene la info del usuario con el access_token.
+    Flujo OAuth2 estándar sin librería GSI.
+    """
+    client_id = GOOGLE_CLIENT_ID
+    client_secret = GOOGLE_CLIENT_SECRET
+
+    if not client_secret:
+        print("[Google Auth] ERROR: GOOGLE_CLIENT_SECRET no configurado")
+        return None
+
+    try:
+        # 1. Intercambiar code por tokens
+        token_resp = http_requests.post(
+            'https://oauth2.googleapis.com/token',
+            data={
+                'code': code,
+                'client_id': client_id,
+                'client_secret': client_secret,
+                'redirect_uri': redirect_uri,
+                'grant_type': 'authorization_code',
+            },
+            timeout=10,
+        )
+
+        print(f"[Google Auth] token exchange status: {token_resp.status_code}")
+
+        if token_resp.status_code != 200:
+            print(f"[Google Auth] token exchange error: {token_resp.text}")
+            return None
+
+        tokens = token_resp.json()
+        access_token = tokens.get('access_token', '')
+
+        if not access_token:
+            print("[Google Auth] No se recibió access_token en el intercambio")
+            return None
+
+        # 2. Obtener info del usuario con el access_token
+        return verify_access_token(access_token)
+
+    except Exception as e:
+        print(f"[Google Auth] Error exchange_code_for_user: {e}")
         return None

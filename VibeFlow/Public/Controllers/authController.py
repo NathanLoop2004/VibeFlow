@@ -5,7 +5,8 @@ Estructura de clase con métodos estáticos (estilo Express.js).
 
 import json
 import uuid
-from django.http import JsonResponse
+from urllib.parse import urlencode
+from django.http import JsonResponse, HttpResponseRedirect
 from django.views.decorators.csrf import csrf_exempt
 from VibeFlow.Public.Services import usersService, rolesService, userRolesService, routePermissionsService
 from VibeFlow.Public.Services import jwtService
@@ -300,3 +301,81 @@ class AuthController:
                 "status": False,
                 "message": str(e)
             }, status=500)
+
+    @staticmethod
+    @csrf_exempt
+    def google_callback(request):
+        """
+        GET: Callback de Google OAuth2 redirect.
+        Recibe ?code=xxx, intercambia por access_token, obtiene info del usuario,
+        y redirige a la página de login con el JWT en la query string.
+        """
+        try:
+            code = request.GET.get('code', '')
+            error = request.GET.get('error', '')
+
+            if error:
+                return HttpResponseRedirect('/?' + urlencode({'error': error}))
+
+            if not code:
+                return HttpResponseRedirect('/?' + urlencode({'error': 'No se recibió código de Google'}))
+
+            # Intercambiar code por access_token
+            redirect_uri = request.build_absolute_uri('/api/auth/google/callback/')
+            google_user = googleAuthService.exchange_code_for_user(code, redirect_uri)
+
+            if not google_user:
+                return HttpResponseRedirect('/?' + urlencode({'error': 'No se pudo verificar con Google'}))
+
+            email = google_user['email'].lower()
+            name = google_user['name']
+
+            if not email:
+                return HttpResponseRedirect('/?' + urlencode({'error': 'No se pudo obtener el email de Google'}))
+
+            # Buscar si el usuario ya existe por email
+            usuario = usersService.get_user_by_email(email)
+
+            if usuario:
+                if not usuario.get('is_active', True):
+                    return HttpResponseRedirect('/?' + urlencode({'error': 'Tu cuenta está desactivada'}))
+            else:
+                # Usuario nuevo → registrar
+                base_username = name.replace(' ', '_').lower() if name else email.split('@')[0]
+                username = base_username
+
+                existing = usersService.get_user_by_username(username)
+                if existing:
+                    username = f"{base_username}_{str(uuid.uuid4())[:6]}"
+
+                random_pass = str(uuid.uuid4())
+                result = usersService.create_user({
+                    "username": username,
+                    "email": email,
+                    "password": random_pass,
+                    "is_verified": True,
+                })
+
+                rol = rolesService.get_role_by_name("usuario_normal")
+                if rol:
+                    userRolesService.assign_role({
+                        "user_id": result["id"],
+                        "role_id": rol["id"],
+                    })
+
+                usuario = usersService.get_user_by_id(result["id"])
+
+            # Generar JWT
+            user_roles = userRolesService.get_roles_by_user(usuario['id'])
+            token = jwtService.generate_token(usuario, roles=user_roles)
+
+            # Guardar sesión
+            request.session['user'] = usuario
+            request.session['is_authenticated'] = True
+
+            # Redirigir a login con token en query
+            return HttpResponseRedirect('/?' + urlencode({'token': token}))
+
+        except Exception as e:
+            print(f"Error en google_callback: {e}")
+            return HttpResponseRedirect('/?' + urlencode({'error': str(e)}))

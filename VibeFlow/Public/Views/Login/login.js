@@ -80,81 +80,32 @@ function togglePassword() {
     }
 }
 
-/* ── Google Sign-In (Botón nativo renderizado por Google) ── */
+/* ── Google Sign-In (OAuth2 Redirect — sin librería GSI) ── */
 const GOOGLE_CLIENT_ID = '267804810810-2n76u7dmoq9v8kbvgjfn2g23eqsm16ks.apps.googleusercontent.com';
+const REDIRECT_URI     = window.location.origin + '/api/auth/google/callback/';
 
-function initGoogleButton() {
-    if (typeof google === 'undefined' || !google.accounts) {
-        // La librería aún no cargó, reintentar en 500ms
-        setTimeout(initGoogleButton, 500);
-        return;
-    }
-
-    console.log('[GoogleSignIn] Inicializando botón nativo...');
-
-    google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleCredential,
-        ux_mode: 'popup',
+function googleSignIn() {
+    const params = new URLSearchParams({
+        client_id:     GOOGLE_CLIENT_ID,
+        redirect_uri:  REDIRECT_URI,
+        response_type: 'code',
+        scope:         'openid email profile',
+        access_type:   'online',
+        prompt:        'select_account',
     });
-
-    google.accounts.id.renderButton(
-        document.getElementById('g_signin_btn'),
-        {
-            theme: 'filled_black',
-            size: 'large',
-            width: 356,
-            text: 'signin_with',
-            shape: 'rectangular',
-            logo_alignment: 'left',
-        }
-    );
-
-    console.log('[GoogleSignIn] Botón renderizado OK');
+    window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
 }
 
-// Inicializar cuando la página cargue
-window.addEventListener('load', initGoogleButton);
-
-async function handleGoogleCredential(response) {
-    console.log('[GoogleSignIn] Credential recibido');
-
-    if (!response.credential) {
-        showMessage('No se recibió credencial de Google', 'error');
-        return;
+/* Si volvemos del callback con token en query, guardarlo y redirigir */
+(function checkGoogleCallback() {
+    const params = new URLSearchParams(window.location.search);
+    const token  = params.get('token');
+    const error  = params.get('error');
+    if (token) {
+        localStorage.setItem('vf_token', token);
+        showMessage('Login con Google exitoso', 'success');
+        setTimeout(() => { window.location.href = '/panel/'; }, 800);
+    } else if (error) {
+        showMessage(decodeURIComponent(error), 'error');
     }
-
-    msgEl.textContent = '';
-    msgEl.className   = 'login-message';
-    showMessage('Verificando con Google...', 'success');
-
-    try {
-        const res = await fetch(API + 'google/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCSRFToken(),
-            },
-            body: JSON.stringify({ credential: response.credential }),
-        });
-
-        console.log('[GoogleSignIn] Backend status:', res.status);
-        const json = await res.json();
-        console.log('[GoogleSignIn] Backend response:', json);
-
-        if (json.status) {
-            if (json.token) {
-                localStorage.setItem('vf_token', json.token);
-            }
-            showMessage(json.message, 'success');
-            setTimeout(() => {
-                window.location.href = '/panel/';
-            }, 1000);
-        } else {
-            showMessage(json.message || 'Error con Google', 'error');
-        }
-    } catch (err) {
-        console.error('[GoogleSignIn] Error fetch:', err);
-        showMessage('Error de conexión con el servidor', 'error');
-    }
-}
+})();

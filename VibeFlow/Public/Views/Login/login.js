@@ -92,9 +92,29 @@ function googleSignIn() {
     google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: handleGoogleResponse,
+        use_fedcm_for_prompt: false,   // desactivar FedCM (causa NetworkError)
     });
 
-    google.accounts.id.prompt();
+    // Renderizar botón oculto como fallback y hacer click programático
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:fixed;top:-9999px;left:-9999px';
+    wrapper.id = '_g_btn';
+    document.body.appendChild(wrapper);
+
+    google.accounts.id.renderButton(wrapper, {
+        type: 'standard',
+        size: 'large',
+        click_listener: () => {},
+    });
+
+    // Intentar prompt primero; si falla, click en el botón renderizado
+    google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            const gBtn = wrapper.querySelector('div[role=button]');
+            if (gBtn) gBtn.click();
+            else showMessage('No se pudo abrir Google Sign-In. Revisa la config del navegador.', 'error');
+        }
+    });
 }
 
 async function handleGoogleResponse(response) {

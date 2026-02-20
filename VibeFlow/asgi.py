@@ -18,7 +18,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'VibeFlow.settings')
 # Inicializar Django primero (necesario para importar consumers)
 django_asgi_app = get_asgi_application()
 
-from VibeFlow.Public.Routes.websocket_routing import websocket_urlpatterns
+from VibeFlow.Public.WebSocket.routing import websocket_urlpatterns
 
 application = ProtocolTypeRouter({
     'http':      django_asgi_app,

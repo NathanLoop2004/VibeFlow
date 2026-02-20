@@ -211,15 +211,20 @@ class AuthController:
         try:
             body = json.loads(request.body)
             credential = body.get("credential", "")
+            access_token = body.get("access_token", "")
 
-            if not credential:
+            if not credential and not access_token:
                 return JsonResponse({
                     "status": False,
                     "message": "Token de Google requerido"
                 }, status=400)
 
-            # Verificar token con Google
-            google_user = googleAuthService.verify_google_token(credential)
+            # Verificar token con Google (id_token o access_token)
+            if credential:
+                google_user = googleAuthService.verify_google_token(credential)
+            else:
+                google_user = googleAuthService.verify_access_token(access_token)
+
             if not google_user:
                 return JsonResponse({
                     "status": False,

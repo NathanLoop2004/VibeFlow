@@ -53,3 +53,38 @@ def verify_google_token(credential):
     except Exception as e:
         print(f"[Google Auth] Error: {e}")
         return None
+
+
+def verify_access_token(access_token):
+    """
+    Verifica un access_token de Google usando el endpoint userinfo.
+    Se usa cuando FedCM no está disponible y el frontend envía un access_token
+    en vez de un id_token (credential).
+    """
+    try:
+        resp = http_requests.get(
+            'https://www.googleapis.com/oauth2/v3/userinfo',
+            headers={'Authorization': f'Bearer {access_token}'},
+            timeout=10,
+        )
+
+        print(f"[Google Auth] userinfo status: {resp.status_code}")
+
+        if resp.status_code != 200:
+            print(f"[Google Auth] userinfo error: {resp.text}")
+            return None
+
+        info = resp.json()
+        email = info.get('email', '')
+        print(f"[Google Auth] access_token verificado OK - email: {email}")
+
+        return {
+            'google_id': info.get('sub', ''),
+            'email': email,
+            'name': info.get('name', email.split('@')[0]),
+            'picture': info.get('picture', ''),
+            'email_verified': info.get('email_verified', False),
+        }
+    except Exception as e:
+        print(f"[Google Auth] Error verify_access_token: {e}")
+        return None

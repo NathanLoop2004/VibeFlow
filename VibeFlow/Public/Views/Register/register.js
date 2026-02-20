@@ -76,7 +76,7 @@ function togglePassword(inputId, btn) {
     }
 }
 
-/* ── Google Sign-Up ── */
+/* ── Google Sign-Up (OAuth2 Popup - sin FedCM) ── */
 const GOOGLE_CLIENT_ID = '267804810810-2n76u7dmoq9v8kbvgjfn2g23eqsm16ks.apps.googleusercontent.com';
 
 function googleSignUp() {
@@ -85,35 +85,21 @@ function googleSignUp() {
         return;
     }
 
-    google.accounts.id.initialize({
+    const client = google.accounts.oauth2.initTokenClient({
         client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleResponse,
-        use_fedcm_for_prompt: false,   // desactivar FedCM (causa NetworkError)
+        scope: 'email profile',
+        callback: handleGoogleToken,
     });
 
-    // Renderizar botón oculto como fallback y hacer click programático
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'position:fixed;top:-9999px;left:-9999px';
-    wrapper.id = '_g_btn';
-    document.body.appendChild(wrapper);
-
-    google.accounts.id.renderButton(wrapper, {
-        type: 'standard',
-        size: 'large',
-        click_listener: () => {},
-    });
-
-    // Intentar prompt primero; si falla, click en el botón renderizado
-    google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            const gBtn = wrapper.querySelector('div[role=button]');
-            if (gBtn) gBtn.click();
-            else showMessage('No se pudo abrir Google Sign-In. Revisa la config del navegador.', 'error');
-        }
-    });
+    client.requestAccessToken();
 }
 
-async function handleGoogleResponse(response) {
+async function handleGoogleToken(tokenResponse) {
+    if (tokenResponse.error) {
+        showMessage('Google Sign-In cancelado o fallido', 'error');
+        return;
+    }
+
     msgEl.textContent = '';
     msgEl.className   = 'register-message';
 
@@ -121,7 +107,7 @@ async function handleGoogleResponse(response) {
         const res = await fetch('/api/auth/google/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ credential: response.credential }),
+            body: JSON.stringify({ access_token: tokenResponse.access_token }),
         });
 
         const json = await res.json();

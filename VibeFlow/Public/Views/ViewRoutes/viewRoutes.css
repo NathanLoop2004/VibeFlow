@@ -34,3 +34,36 @@ tr:hover { background: #1a1a2e; }
 .card { background: #16162a; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
 
 .actions { display: flex; gap: 6px; }
+
+.form-row { display: flex; gap: 12px; margin-bottom: 12px; }
+.form-row .form-group { flex: 1; margin-bottom: 0; }
+.check-inline { display: inline-flex; align-items: center; gap: 6px; color: #a78bfa; font-size: 14px; margin-bottom: 12px; cursor: pointer; }
+.text-muted { color: #555; }
+
+/* ── Botón Editar ── */
+.btn-edit { background: #2563eb; color: white; padding: 6px 14px; font-size: 12px; }
+.btn-edit:hover { background: #1d4ed8; }
+.btn-secondary { background: #4b5563; color: white; }
+.btn-secondary:hover { background: #374151; }
+
+/* ── Modal ── */
+.modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+.modal {
+    background: #16162a; border-radius: 12px; padding: 28px; width: 680px; max-width: 95vw;
+    max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    border: 1px solid #2a2a4a;
+}
+.modal-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;
+}
+.modal-header h3 { color: #7c3aed; margin: 0; }
+.modal-close {
+    background: none; border: none; color: #888; font-size: 24px; cursor: pointer;
+    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; transition: all 0.2s;
+}
+.modal-close:hover { background: #2a2a4a; color: #fff; }
+.modal-actions { display: flex; gap: 10px; margin-top: 16px; }

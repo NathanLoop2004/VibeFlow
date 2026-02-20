@@ -150,6 +150,18 @@ class AuthController:
                     "can_post": p['can_post'],
                     "can_put": p['can_put'],
                     "can_delete": p['can_delete'],
+                    "module_id": p.get('module_id'),
+                    "module_name": p.get('module_name'),
+                    "module_icon": p.get('module_icon'),
+                    "module_order": p.get('module_order'),
+                    "family_id": p.get('family_id'),
+                    "family_name": p.get('family_name'),
+                    "family_icon": p.get('family_icon'),
+                    "family_order": p.get('family_order'),
+                    "subfamily_id": p.get('subfamily_id'),
+                    "subfamily_name": p.get('subfamily_name'),
+                    "subfamily_icon": p.get('subfamily_icon'),
+                    "subfamily_order": p.get('subfamily_order'),
                 }
                 for p in permisos if p.get('can_get')
             ]

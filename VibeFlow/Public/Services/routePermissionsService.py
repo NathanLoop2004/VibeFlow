@@ -89,6 +89,7 @@ def get_permissions_by_user(user_id):
     """
     Obtiene las rutas accesibles para un usuario, a través de sus roles.
     Si un usuario tiene varios roles, se combinan los permisos (OR lógico).
+    Incluye datos de jerarquía (módulo, familia, subfamilia).
     """
     with connection.cursor() as cursor:
         cursor.execute("""
@@ -99,14 +100,32 @@ def get_permissions_by_user(user_id):
                 BOOL_OR(rp.can_get) AS can_get,
                 BOOL_OR(rp.can_post) AS can_post,
                 BOOL_OR(rp.can_put) AS can_put,
-                BOOL_OR(rp.can_delete) AS can_delete
+                BOOL_OR(rp.can_delete) AS can_delete,
+                vr.module_id,
+                m.name AS module_name,
+                m.icon AS module_icon,
+                m.display_order AS module_order,
+                vr.family_id,
+                f.name AS family_name,
+                f.icon AS family_icon,
+                f.display_order AS family_order,
+                vr.subfamily_id,
+                sf.name AS subfamily_name,
+                sf.icon AS subfamily_icon,
+                sf.display_order AS subfamily_order
             FROM app.route_permissions rp
             JOIN app.view_routes vr ON vr.id = rp.route_id
             JOIN app.user_roles ur ON ur.role_id = rp.role_id
+            LEFT JOIN app.modules m ON m.id = vr.module_id
+            LEFT JOIN app.families f ON f.id = vr.family_id
+            LEFT JOIN app.subfamilies sf ON sf.id = vr.subfamily_id
             WHERE ur.user_id = %s
               AND vr.is_active = TRUE
-            GROUP BY rp.route_id, vr.url_path, vr.name
-            ORDER BY vr.url_path
+            GROUP BY rp.route_id, vr.url_path, vr.name,
+                     vr.module_id, m.name, m.icon, m.display_order,
+                     vr.family_id, f.name, f.icon, f.display_order,
+                     vr.subfamily_id, sf.name, sf.icon, sf.display_order
+            ORDER BY m.display_order NULLS LAST, f.display_order NULLS LAST, sf.display_order NULLS LAST, vr.url_path
         """, [user_id])
         return _dictfetchall(cursor)
 

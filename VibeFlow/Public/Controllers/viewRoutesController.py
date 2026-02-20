@@ -110,7 +110,7 @@ class ViewRoutesController:
             template_name = body.get("template_name")
             name = body.get("name")
 
-            if not url_path or not template_name or not name:
+            if url_path is None or not template_name or not name:
                 return JsonResponse({
                     "status": False,
                     "message": "url_path, template_name y name son requeridos"

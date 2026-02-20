@@ -18,18 +18,27 @@ def _dictfetchone(cursor):
 
 
 def get_all_routes():
-    """Obtiene todas las rutas ordenadas por url_path."""
+    """Obtiene todas las rutas con info de módulo/familia/subfamilia."""
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT
-                id,
-                url_path,
-                template_name,
-                name,
-                is_active,
-                created_at
-            FROM app.view_routes
-            ORDER BY url_path ASC
+                vr.id,
+                vr.url_path,
+                vr.template_name,
+                vr.name,
+                vr.is_active,
+                vr.module_id,
+                m.name AS module_name,
+                vr.family_id,
+                f.name AS family_name,
+                vr.subfamily_id,
+                sf.name AS subfamily_name,
+                vr.created_at
+            FROM app.view_routes vr
+            LEFT JOIN app.modules m ON m.id = vr.module_id
+            LEFT JOIN app.families f ON f.id = vr.family_id
+            LEFT JOIN app.subfamilies sf ON sf.id = vr.subfamily_id
+            ORDER BY vr.url_path ASC
         """)
         rows = _dictfetchall(cursor)
         for r in rows:
@@ -61,17 +70,20 @@ def get_route_by_path(url_path):
 
 
 def create_route(data):
-    """Crea una nueva ruta. Recibe dict con: url_path, template_name, name."""
+    """Crea una nueva ruta. Recibe dict con: url_path, template_name, name, module_id, family_id, subfamily_id."""
     with connection.cursor() as cursor:
         cursor.execute("""
-            INSERT INTO app.view_routes (url_path, template_name, name, is_active)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO app.view_routes (url_path, template_name, name, is_active, module_id, family_id, subfamily_id, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
             RETURNING id
         """, [
             data["url_path"],
             data["template_name"],
             data["name"],
             data.get("is_active", True),
+            data.get("module_id") or None,
+            data.get("family_id") or None,
+            data.get("subfamily_id") or None,
         ])
         row = cursor.fetchone()
         return {"id": row[0], "message": "Ruta creada exitosamente"}
@@ -101,6 +113,15 @@ def update_route(route_id, data):
     if "is_active" in data:
         fields.append("is_active = %s")
         values.append(data["is_active"])
+    if "module_id" in data:
+        fields.append("module_id = %s")
+        values.append(data["module_id"] or None)
+    if "family_id" in data:
+        fields.append("family_id = %s")
+        values.append(data["family_id"] or None)
+    if "subfamily_id" in data:
+        fields.append("subfamily_id = %s")
+        values.append(data["subfamily_id"] or None)
 
     if not fields:
         return None
@@ -113,7 +134,7 @@ def update_route(route_id, data):
             UPDATE app.view_routes
             SET {', '.join(fields)}
             WHERE id = %s
-            RETURNING id, url_path, template_name, name, is_active
+            RETURNING id, url_path, template_name, name, is_active, module_id, family_id, subfamily_id
         """, values)
         return _dictfetchone(cursor)
 

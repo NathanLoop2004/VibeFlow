@@ -242,9 +242,9 @@ API_TO_VIEW_MAP = {
     '/api/users/': 'view-users',
     '/api/roles/': 'view-roles',
     '/api/user-roles/': 'view-user-roles',
-    '/api/modules/': 'view-routes',
-    '/api/families/': 'view-routes',
-    '/api/subfamilies/': 'view-routes',
+    '/api/modules/': 'view-modules',
+    '/api/families/': 'view-families',
+    '/api/subfamilies/': 'view-subfamilies',
 }
 
 

@@ -84,37 +84,65 @@ function togglePassword() {
 const GOOGLE_CLIENT_ID = '267804810810-2n76u7dmoq9v8kbvgjfn2g23eqsm16ks.apps.googleusercontent.com';
 
 function googleSignIn() {
-    if (typeof google === 'undefined' || !google.accounts) {
-        showMessage('Cargando Google Sign-In, intenta de nuevo...', 'error');
+    console.log('[GoogleSignIn] Iniciando...');
+
+    if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+        showMessage('Cargando Google Sign-In, intenta de nuevo en unos segundos...', 'error');
+        console.warn('[GoogleSignIn] google.accounts.oauth2 no disponible aún');
         return;
     }
 
-    const client = google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
-        scope: 'email profile',
-        callback: handleGoogleToken,
-    });
+    try {
+        const client = google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: 'email profile',
+            callback: handleGoogleToken,
+            error_callback: (err) => {
+                console.error('[GoogleSignIn] error_callback:', err);
+                showMessage('No se pudo abrir la ventana de Google. Permite pop-ups e intenta de nuevo.', 'error');
+            },
+        });
 
-    client.requestAccessToken();
+        console.log('[GoogleSignIn] requestAccessToken...');
+        client.requestAccessToken();
+    } catch (e) {
+        console.error('[GoogleSignIn] Excepción:', e);
+        showMessage('Error al iniciar Google Sign-In: ' + e.message, 'error');
+    }
 }
 
 async function handleGoogleToken(tokenResponse) {
+    console.log('[GoogleSignIn] Callback recibido', tokenResponse);
+
     if (tokenResponse.error) {
+        console.warn('[GoogleSignIn] Error en tokenResponse:', tokenResponse.error);
         showMessage('Google Sign-In cancelado o fallido', 'error');
+        return;
+    }
+
+    if (!tokenResponse.access_token) {
+        console.warn('[GoogleSignIn] No se recibió access_token');
+        showMessage('No se obtuvo token de Google', 'error');
         return;
     }
 
     msgEl.textContent = '';
     msgEl.className   = 'login-message';
+    showMessage('Verificando con Google...', 'success');
 
     try {
         const res = await fetch(API + 'google/', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken(),
+            },
             body: JSON.stringify({ access_token: tokenResponse.access_token }),
         });
 
+        console.log('[GoogleSignIn] Respuesta backend status:', res.status);
         const json = await res.json();
+        console.log('[GoogleSignIn] Respuesta backend:', json);
 
         if (json.status) {
             if (json.token) {
@@ -128,7 +156,7 @@ async function handleGoogleToken(tokenResponse) {
             showMessage(json.message || 'Error con Google', 'error');
         }
     } catch (err) {
+        console.error('[GoogleSignIn] Error fetch:', err);
         showMessage('Error de conexión con el servidor', 'error');
-        console.error(err);
     }
 }

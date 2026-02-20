@@ -14,27 +14,35 @@ from VibeFlow.Public.Services import routePermissionsService
 
 class ViewRoutesController:
 
+    # Rutas públicas que no requieren autenticación
+    PUBLIC_ROUTES = ('', 'register')
+
     @staticmethod
     def dynamic_view(request, url_path):
         """
         Vista dinámica: busca el url_path en la BD y renderiza el template.
-        Verifica permisos del usuario según el método HTTP.
+        - Rutas públicas (login, register): acceso libre.
+        - Resto de rutas: requiere estar logueado (sesión activa).
+        - route_permissions solo controla qué aparece en el navbar del panel.
         """
         try:
+            # Normalizar: quitar trailing slash
+            url_path = url_path.strip('/')
+
             route = viewRoutesService.get_route_by_path(url_path)
 
             if not route:
                 raise Http404(f"Ruta '{url_path}' no encontrada o desactivada")
 
-            # Verificar permisos si viene user_id en query param
-            user_id = request.GET.get('user_id')
-            if user_id:
-                has_perm = routePermissionsService.check_permission(user_id, url_path, request.method)
-                if not has_perm:
+            # Rutas públicas: acceso sin autenticación
+            if url_path not in ViewRoutesController.PUBLIC_ROUTES:
+                # Para el resto, solo verificar que esté logueado
+                user = request.session.get('user')
+                if not user:
                     return JsonResponse({
                         "status": False,
-                        "message": "No tienes permiso para acceder a esta ruta con este método"
-                    }, status=403)
+                        "message": "Debes iniciar sesión para acceder"
+                    }, status=401)
 
             return render(request, route['template_name'])
         except Http404:

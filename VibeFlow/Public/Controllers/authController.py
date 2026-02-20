@@ -6,7 +6,7 @@ Estructura de clase con métodos estáticos (estilo Express.js).
 import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from VibeFlow.Public.Services import usersService, rolesService, userRolesService
+from VibeFlow.Public.Services import usersService, rolesService, userRolesService, routePermissionsService
 
 
 class AuthController:
@@ -18,8 +18,12 @@ class AuthController:
         try:
             body = json.loads(request.body)
 
-            username = body.get("username")
+            username = body.get("username", "").strip()
             password = body.get("password")
+
+            # Si el usuario ingresó un email, normalizarlo a minúsculas
+            if "@" in username:
+                username = username.lower()
 
             if not username or not password:
                 return JsonResponse({
@@ -68,8 +72,8 @@ class AuthController:
         try:
             body = json.loads(request.body)
 
-            username = body.get("username")
-            email = body.get("email")
+            username = body.get("username", "").strip()
+            email = body.get("email", "").strip().lower()
             password = body.get("password")
 
             if not username or not email or not password:
@@ -116,6 +120,47 @@ class AuthController:
             }, status=201)
         except Exception as e:
             print(f"Error en register: {e}")
+            return JsonResponse({
+                "status": False,
+                "message": str(e)
+            }, status=500)
+
+    @staticmethod
+    @csrf_exempt
+    def my_routes(request):
+        """GET: Devuelve las rutas que el usuario en sesión puede ver (can_get=true)."""
+        try:
+            user = request.session.get('user')
+            if not user:
+                return JsonResponse({
+                    "status": False,
+                    "message": "No autorizado"
+                }, status=401)
+
+            user_id = user.get('id')
+            permisos = routePermissionsService.get_permissions_by_user(str(user_id))
+
+            # Filtrar solo las rutas con can_get = True
+            rutas = [
+                {
+                    "route_id": p['route_id'],
+                    "url_path": p['url_path'],
+                    "route_name": p['route_name'],
+                    "can_get": p['can_get'],
+                    "can_post": p['can_post'],
+                    "can_put": p['can_put'],
+                    "can_delete": p['can_delete'],
+                }
+                for p in permisos if p.get('can_get')
+            ]
+
+            return JsonResponse({
+                "status": True,
+                "data": rutas,
+                "message": "Rutas del usuario obtenidas correctamente"
+            })
+        except Exception as e:
+            print(f"Error en my_routes: {e}")
             return JsonResponse({
                 "status": False,
                 "message": str(e)

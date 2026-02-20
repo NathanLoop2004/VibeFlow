@@ -175,15 +175,15 @@ def get_user_by_email(email):
 
 def authenticate_user(username, password):
     """
-    Autentica un usuario por username y password.
+    Autentica un usuario por username o email y password.
     Retorna el usuario (dict) si las credenciales son válidas, None si no.
     """
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT id, username, email, password_hash, is_active, is_verified, is_superuser
             FROM app.users
-            WHERE username = %s
-        """, [username])
+            WHERE username = %s OR LOWER(email) = LOWER(%s)
+        """, [username, username])
         row = _dictfetchone(cursor)
 
     if not row:

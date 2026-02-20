@@ -1,0 +1,63 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Permisos de Rutas - VibeFlow</title>
+    <link rel="stylesheet" href="{% static 'RoutePermissions/routePermissions.css' %}">
+</head>
+<body>
+    <div class="card">
+        <h2>🔐 Asignar Permiso de Ruta</h2>
+        <div id="msg-perm" class="msg"></div>
+        <form id="form-perm">
+            <div class="form-group">
+                <label>Rol</label>
+                <select id="role_id" required></select>
+            </div>
+            <div class="form-group">
+                <label>Ruta</label>
+                <select id="route_id" required></select>
+            </div>
+            <div class="checkbox-group">
+                <label>Métodos permitidos:</label>
+                <div class="checks">
+                    <label><input type="checkbox" id="can_get" checked> GET</label>
+                    <label><input type="checkbox" id="can_post"> POST</label>
+                    <label><input type="checkbox" id="can_put"> PUT</label>
+                    <label><input type="checkbox" id="can_delete"> DELETE</label>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Asignar Permiso</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>📋 Permisos Asignados</h2>
+        <div class="form-group">
+            <label>Filtrar por Rol</label>
+            <select id="filter-role">
+                <option value="">-- Todos los roles --</option>
+            </select>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Rol</th>
+                    <th>Ruta</th>
+                    <th>GET</th>
+                    <th>POST</th>
+                    <th>PUT</th>
+                    <th>DELETE</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody id="perms-table"></tbody>
+        </table>
+    </div>
+
+    <script src="{% static 'RoutePermissions/routePermissions.js' %}?v=2"></script>
+</body>
+</html>

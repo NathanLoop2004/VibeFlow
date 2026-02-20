@@ -1,15 +1,14 @@
 """
-routePermissionsModel.py - Modelo de permisos por ruta y usuario.
-Define qué usuario puede acceder a qué ruta y con qué métodos HTTP.
+routePermissionsModel.py - Modelo de permisos por ruta y rol.
+Define qué rol puede acceder a qué ruta y con qué métodos HTTP.
 """
 
 from django.db import models
-from VibeFlow.Public.Models.usersModel import User
 from VibeFlow.Public.Models.viewRoutesModel import ViewRoute
 
 
 class RoutePermission(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='route_permissions')
+    role = models.ForeignKey('accounts.Role', on_delete=models.CASCADE, related_name='route_permissions', db_column='role_id')
     route = models.ForeignKey(ViewRoute, on_delete=models.CASCADE, related_name='permissions')
     can_get = models.BooleanField(default=False, help_text="Permiso para GET (ver la vista)")
     can_post = models.BooleanField(default=False, help_text="Permiso para POST (crear)")
@@ -21,8 +20,8 @@ class RoutePermission(models.Model):
     class Meta:
         app_label = 'accounts'
         db_table = 'route_permissions'
-        unique_together = ('user', 'route')
-        ordering = ['route__url_path', 'user__username']
+        unique_together = ('role', 'route')
+        ordering = ['route__url_path', 'role__name']
 
     def __str__(self):
         methods = []
@@ -30,4 +29,4 @@ class RoutePermission(models.Model):
         if self.can_post: methods.append('POST')
         if self.can_put: methods.append('PUT')
         if self.can_delete: methods.append('DELETE')
-        return f"{self.user.username} → {self.route.url_path} [{', '.join(methods)}]"
+        return f"{self.role.name} → {self.route.url_path} [{', '.join(methods)}]"

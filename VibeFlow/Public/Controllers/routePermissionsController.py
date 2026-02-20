@@ -1,5 +1,6 @@
 """
 routePermissionsController.py - Controlador para gestionar permisos de rutas.
+Los permisos se asignan por ROL (no por usuario).
 Estructura de clase con métodos estáticos (estilo Express.js).
 """
 
@@ -17,6 +18,10 @@ class RoutePermissionsController:
         """GET: Obtiene todos los permisos."""
         try:
             permisos = routePermissionsService.get_all_permissions()
+
+            print("=== JSON route-permissions ===")
+            print(json.dumps(permisos, indent=2, default=str))
+            print("==============================")
 
             return JsonResponse({
                 "status": True,
@@ -51,18 +56,18 @@ class RoutePermissionsController:
 
     @staticmethod
     @csrf_exempt
-    def obtener_permisos_por_usuario(request, user_id):
-        """GET: Obtiene los permisos de un usuario."""
+    def obtener_permisos_por_rol(request, role_id):
+        """GET: Obtiene los permisos de un rol."""
         try:
-            permisos = routePermissionsService.get_permissions_by_user(str(user_id))
+            permisos = routePermissionsService.get_permissions_by_role(role_id)
 
             return JsonResponse({
                 "status": True,
                 "data": permisos,
-                "message": "Permisos del usuario obtenidos correctamente"
+                "message": "Permisos del rol obtenidos correctamente"
             })
         except Exception as e:
-            print(f"Error en obtener_permisos_por_usuario: {e}")
+            print(f"Error en obtener_permisos_por_rol: {e}")
             return JsonResponse({
                 "status": False,
                 "message": str(e)
@@ -75,13 +80,13 @@ class RoutePermissionsController:
         try:
             body = json.loads(request.body)
 
-            user_id = body.get("user_id")
+            role_id = body.get("role_id")
             route_id = body.get("route_id")
 
-            if not user_id or not route_id:
+            if not role_id or not route_id:
                 return JsonResponse({
                     "status": False,
-                    "message": "user_id y route_id son requeridos"
+                    "message": "role_id y route_id son requeridos"
                 }, status=400)
 
             resultado = routePermissionsService.create_permission(body)

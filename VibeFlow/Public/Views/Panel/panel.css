@@ -25,3 +25,6 @@ body { font-family: 'Segoe UI', sans-serif; background: #0f0f23; color: #e0e0e0;
 }
 .tabs a:hover { color: #ccc; }
 .tabs a.active { color: #7c3aed; border-bottom-color: #7c3aed; }
+
+/* Nav loading / empty states */
+.nav-loading, .nav-empty { color: #666; font-size: 13px; padding: 20px 24px; }

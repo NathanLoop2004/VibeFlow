@@ -22,6 +22,6 @@ urlpatterns = [
     # GET /api/permissions/route/<id>/
     path('route/<int:route_id>/', RoutePermissionsController.obtener_permisos_por_ruta, name='api-permissions-by-route'),
 
-    # GET /api/permissions/user/<uuid>/
-    path('user/<uuid:user_id>/', RoutePermissionsController.obtener_permisos_por_usuario, name='api-permissions-by-user'),
+    # GET /api/permissions/role/<id>/
+    path('role/<int:role_id>/', RoutePermissionsController.obtener_permisos_por_rol, name='api-permissions-by-role'),
 ]

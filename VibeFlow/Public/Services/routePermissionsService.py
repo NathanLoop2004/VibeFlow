@@ -1,5 +1,6 @@
 """
 routePermissionsService.py - Capa de servicio para los permisos de rutas.
+Los permisos se asignan por ROL (no por usuario).
 Consultas SQL directas usando django.db.connection.
 """
 
@@ -18,13 +19,13 @@ def _dictfetchone(cursor):
 
 
 def get_all_permissions():
-    """Obtiene todos los permisos con JOIN a users y view_routes."""
+    """Obtiene todos los permisos con JOIN a roles y view_routes."""
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT
                 rp.id,
-                rp.user_id,
-                u.username,
+                rp.role_id,
+                r.name AS role_name,
                 rp.route_id,
                 vr.url_path,
                 vr.name AS route_name,
@@ -33,45 +34,41 @@ def get_all_permissions():
                 rp.can_put,
                 rp.can_delete
             FROM app.route_permissions rp
-            JOIN app.users u ON u.id = rp.user_id
+            JOIN app.roles r ON r.id = rp.role_id
             JOIN app.view_routes vr ON vr.id = rp.route_id
-            ORDER BY vr.url_path, u.username
+            ORDER BY r.name, vr.url_path
         """)
-        rows = _dictfetchall(cursor)
-        for r in rows:
-            r['user_id'] = str(r['user_id'])
-        return rows
+        return _dictfetchall(cursor)
 
 
 def get_permissions_by_route(route_id):
-    """Obtiene todos los usuarios con permisos para una ruta específica."""
+    """Obtiene todos los roles con permisos para una ruta específica."""
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT
                 rp.id,
-                rp.user_id,
-                u.username,
+                rp.role_id,
+                r.name AS role_name,
                 rp.can_get,
                 rp.can_post,
                 rp.can_put,
                 rp.can_delete
             FROM app.route_permissions rp
-            JOIN app.users u ON u.id = rp.user_id
+            JOIN app.roles r ON r.id = rp.role_id
             WHERE rp.route_id = %s
-            ORDER BY u.username
+            ORDER BY r.name
         """, [route_id])
-        rows = _dictfetchall(cursor)
-        for r in rows:
-            r['user_id'] = str(r['user_id'])
-        return rows
+        return _dictfetchall(cursor)
 
 
-def get_permissions_by_user(user_id):
-    """Obtiene todas las rutas a las que tiene acceso un usuario."""
+def get_permissions_by_role(role_id):
+    """Obtiene todas las rutas a las que tiene acceso un rol."""
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT
                 rp.id,
+                rp.role_id,
+                r.name AS role_name,
                 rp.route_id,
                 vr.url_path,
                 vr.name AS route_name,
@@ -80,34 +77,61 @@ def get_permissions_by_user(user_id):
                 rp.can_put,
                 rp.can_delete
             FROM app.route_permissions rp
+            JOIN app.roles r ON r.id = rp.role_id
             JOIN app.view_routes vr ON vr.id = rp.route_id
-            WHERE rp.user_id = %s
+            WHERE rp.role_id = %s
+            ORDER BY vr.url_path
+        """, [role_id])
+        return _dictfetchall(cursor)
+
+
+def get_permissions_by_user(user_id):
+    """
+    Obtiene las rutas accesibles para un usuario, a través de sus roles.
+    Si un usuario tiene varios roles, se combinan los permisos (OR lógico).
+    """
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT
+                rp.route_id,
+                vr.url_path,
+                vr.name AS route_name,
+                BOOL_OR(rp.can_get) AS can_get,
+                BOOL_OR(rp.can_post) AS can_post,
+                BOOL_OR(rp.can_put) AS can_put,
+                BOOL_OR(rp.can_delete) AS can_delete
+            FROM app.route_permissions rp
+            JOIN app.view_routes vr ON vr.id = rp.route_id
+            JOIN app.user_roles ur ON ur.role_id = rp.role_id
+            WHERE ur.user_id = %s
+              AND vr.is_active = TRUE
+            GROUP BY rp.route_id, vr.url_path, vr.name
             ORDER BY vr.url_path
         """, [user_id])
         return _dictfetchall(cursor)
 
 
 def create_permission(data):
-    """Asigna permisos a un usuario para una ruta."""
-    user_id = data["user_id"]
+    """Asigna permisos a un rol para una ruta."""
+    role_id = data["role_id"]
     route_id = data["route_id"]
 
     with connection.cursor() as cursor:
         # Verificar si ya existe
         cursor.execute("""
             SELECT 1 FROM app.route_permissions
-            WHERE user_id = %s AND route_id = %s
-        """, [user_id, route_id])
+            WHERE role_id = %s AND route_id = %s
+        """, [role_id, route_id])
 
         if cursor.fetchone():
-            raise ValueError("Este usuario ya tiene permisos configurados para esta ruta")
+            raise ValueError("Este rol ya tiene permisos configurados para esta ruta")
 
         cursor.execute("""
-            INSERT INTO app.route_permissions (user_id, route_id, can_get, can_post, can_put, can_delete)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO app.route_permissions (role_id, route_id, can_get, can_post, can_put, can_delete, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
             RETURNING id
         """, [
-            user_id,
+            role_id,
             route_id,
             data.get("can_get", False),
             data.get("can_post", False),
@@ -164,7 +188,8 @@ def delete_permission(perm_id):
 
 def check_permission(user_id, url_path, method):
     """
-    Verifica si un usuario tiene permiso para un método HTTP en una ruta.
+    Verifica si un usuario tiene permiso para un método HTTP en una ruta,
+    a través de cualquiera de sus roles.
     Retorna True si tiene permiso, False si no.
     """
     method_col = {
@@ -179,10 +204,11 @@ def check_permission(user_id, url_path, method):
 
     with connection.cursor() as cursor:
         cursor.execute(f"""
-            SELECT rp.{method_col}
+            SELECT BOOL_OR(rp.{method_col})
             FROM app.route_permissions rp
             JOIN app.view_routes vr ON vr.id = rp.route_id
-            WHERE rp.user_id = %s
+            JOIN app.user_roles ur ON ur.role_id = rp.role_id
+            WHERE ur.user_id = %s
               AND vr.url_path = %s
               AND vr.is_active = TRUE
         """, [user_id, url_path])

@@ -30,7 +30,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-)+op0hgaygu=&++w+!#mi^ke%a
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'accounts',
+    'VibeFlow.accounts',
 ]
 
 MIDDLEWARE = [
@@ -142,3 +142,12 @@ X_FRAME_OPTIONS = 'ALLOWALL'
 # Usar sesiones basadas en cookies (signed cookies) para evitar
 # problemas de search_path con django_session en el pooler de Supabase
 SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
+
+# HTTPS / SSL settings
+SECURE_SSL_REDIRECT = False          # No forzar redirect, permitir HTTP y HTTPS
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'https://localhost:8443',
+    'https://127.0.0.1:8443',
+]

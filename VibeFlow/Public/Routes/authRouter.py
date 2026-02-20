@@ -14,6 +14,8 @@ urlpatterns = [
     path('logout/', csrf_exempt(AuthController.logout), name='api-auth-logout'),
     # POST /api/auth/register/
     path('register/', csrf_exempt(AuthController.register), name='api-auth-register'),
+    # POST /api/auth/google/
+    path('google/', csrf_exempt(AuthController.google_login), name='api-auth-google'),
     # GET /api/auth/my-routes/
     path('my-routes/', AuthController.my_routes, name='api-auth-my-routes'),
 ]

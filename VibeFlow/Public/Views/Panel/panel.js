@@ -3,6 +3,11 @@ function getToken() {
     return localStorage.getItem('vf_token') || '';
 }
 
+// Si no hay token, redirigir al login inmediatamente
+if (!getToken()) {
+    window.location.href = '/';
+}
+
 function authHeaders(extra = {}) {
     return { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json', ...extra };
 }
@@ -164,11 +169,8 @@ async function loadMenu() {
 
         nav.innerHTML = renderNav(routes);
 
-        // Cargar la primera vista
-        if (routes.length > 0) {
-            const firstRoute = routes.find(r => r.module_id) || routes[0];
-            document.getElementById('view-frame').src = '/' + firstRoute.url_path;
-        }
+        // Cargar la página de bienvenida por defecto
+        document.getElementById('view-frame').src = '/welcome/';
     } catch (e) {
         console.error('Error cargando menú:', e);
         document.getElementById('nav-menu').innerHTML = '<p class="nav-empty">Error cargando menú</p>';

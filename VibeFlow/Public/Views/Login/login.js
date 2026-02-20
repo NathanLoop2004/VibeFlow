@@ -67,3 +67,62 @@ function getCSRFToken() {
         .find(row => row.startsWith('csrftoken='));
     return cookie ? cookie.split('=')[1] : '';
 }
+
+function togglePassword() {
+    const input = document.getElementById('password');
+    const btn = input.nextElementSibling;
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+    } else {
+        input.type = 'password';
+        btn.textContent = '👁️';
+    }
+}
+
+/* ── Google Sign-In ── */
+const GOOGLE_CLIENT_ID = '267804810810-2n76u7dmoq9v8kbvgjfn2g23eqsm16ks.apps.googleusercontent.com';
+
+function googleSignIn() {
+    if (typeof google === 'undefined' || !google.accounts) {
+        showMessage('Cargando Google Sign-In, intenta de nuevo...', 'error');
+        return;
+    }
+
+    google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleResponse,
+    });
+
+    google.accounts.id.prompt();
+}
+
+async function handleGoogleResponse(response) {
+    msgEl.textContent = '';
+    msgEl.className   = 'login-message';
+
+    try {
+        const res = await fetch(API + 'google/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ credential: response.credential }),
+        });
+
+        const json = await res.json();
+
+        if (json.status) {
+            if (json.token) {
+                localStorage.setItem('vf_token', json.token);
+            }
+            showMessage(json.message, 'success');
+            setTimeout(() => {
+                window.location.href = '/panel/';
+            }, 1000);
+        } else {
+            showMessage(json.message || 'Error con Google', 'error');
+        }
+    } catch (err) {
+        showMessage('Error de conexión con el servidor', 'error');
+        console.error(err);
+    }
+}

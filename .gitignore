@@ -23,6 +23,9 @@ media/
 staticfiles/
 static/
 
+# SSL Certificates
+VibeFlow/certs/
+
 # IDE
 .vscode/
 .idea/

@@ -38,6 +38,7 @@ class AuthMiddleware:
     PUBLIC_PATHS = (
         '/',
         '/register/',
+        '/welcome/',
     )
 
     def __init__(self, get_response):

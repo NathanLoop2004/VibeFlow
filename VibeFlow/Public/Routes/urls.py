@@ -5,11 +5,15 @@ Cada módulo tiene su propio Router y aquí solo se hace el include con su prefi
 """
 
 from django.urls import path, include, re_path
+from django.shortcuts import render
 
 from VibeFlow.Public.Controllers.viewRoutesController import ViewRoutesController
 
 
 urlpatterns = [
+    # ─── Vista de bienvenida (carga dentro del iframe del panel) ─
+    path('welcome/', lambda request: render(request, 'Welcome/welcome.html'), name='welcome'),
+
     # ─── API Routers (equivalente a app.use('/api/xxx', xxxRouter)) ─
     path('api/users/', include('VibeFlow.Public.Routes.usersRouter')),
     path('api/roles/', include('VibeFlow.Public.Routes.rolesRouter')),

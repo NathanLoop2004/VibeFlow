@@ -4,10 +4,12 @@ Estructura de clase con métodos estáticos (estilo Express.js).
 """
 
 import json
+import uuid
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from VibeFlow.Public.Services import usersService, rolesService, userRolesService, routePermissionsService
 from VibeFlow.Public.Services import jwtService
+from VibeFlow.Public.Services import googleAuthService
 
 
 class AuthController:
@@ -192,6 +194,103 @@ class AuthController:
             })
         except Exception as e:
             print(f"Error en my_routes: {e}")
+            return JsonResponse({
+                "status": False,
+                "message": str(e)
+            }, status=500)
+
+    @staticmethod
+    @csrf_exempt
+    def google_login(request):
+        """
+        POST: Autentica o registra un usuario usando Google OAuth.
+        Recibe { credential: "token_de_google" }
+        - Si el email ya existe → login directo
+        - Si no existe → crea usuario + asigna rol usuario_normal → login
+        """
+        try:
+            body = json.loads(request.body)
+            credential = body.get("credential", "")
+
+            if not credential:
+                return JsonResponse({
+                    "status": False,
+                    "message": "Token de Google requerido"
+                }, status=400)
+
+            # Verificar token con Google
+            google_user = googleAuthService.verify_google_token(credential)
+            if not google_user:
+                return JsonResponse({
+                    "status": False,
+                    "message": "Token de Google inválido o expirado"
+                }, status=401)
+
+            email = google_user['email'].lower()
+            name = google_user['name']
+
+            if not email:
+                return JsonResponse({
+                    "status": False,
+                    "message": "No se pudo obtener el email de Google"
+                }, status=400)
+
+            # Buscar si el usuario ya existe por email
+            usuario = usersService.get_user_by_email(email)
+
+            if usuario:
+                # Usuario existe → login directo
+                if not usuario.get('is_active', True):
+                    return JsonResponse({
+                        "status": False,
+                        "message": "Tu cuenta está desactivada"
+                    }, status=403)
+            else:
+                # Usuario nuevo → registrar
+                base_username = name.replace(' ', '_').lower() if name else email.split('@')[0]
+                username = base_username
+
+                # Si el username ya existe, agregar un sufijo
+                existing = usersService.get_user_by_username(username)
+                if existing:
+                    username = f"{base_username}_{str(uuid.uuid4())[:6]}"
+
+                # Crear usuario con contraseña aleatoria (usa Google para auth)
+                random_pass = str(uuid.uuid4())
+                result = usersService.create_user({
+                    "username": username,
+                    "email": email,
+                    "password": random_pass,
+                    "is_verified": True,
+                })
+
+                # Asignar rol usuario_normal
+                rol = rolesService.get_role_by_name("usuario_normal")
+                if rol:
+                    userRolesService.assign_role({
+                        "user_id": result["id"],
+                        "role_id": rol["id"],
+                    })
+
+                # Obtener el usuario recién creado
+                usuario = usersService.get_user_by_id(result["id"])
+
+            # Obtener roles y generar JWT
+            user_roles = userRolesService.get_roles_by_user(usuario['id'])
+            token = jwtService.generate_token(usuario, roles=user_roles)
+
+            # Guardar sesión
+            request.session['user'] = usuario
+            request.session['is_authenticated'] = True
+
+            return JsonResponse({
+                "status": True,
+                "data": usuario,
+                "token": token,
+                "message": "Login con Google exitoso"
+            })
+        except Exception as e:
+            print(f"Error en google_login: {e}")
             return JsonResponse({
                 "status": False,
                 "message": str(e)

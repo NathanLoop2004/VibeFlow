@@ -6,10 +6,7 @@ Usa el endpoint tokeninfo de Google para validar el credential.
 import os
 import requests as http_requests
 
-GOOGLE_CLIENT_ID = os.getenv(
-    'GOOGLE_CLIENT_ID',
-    '267804810810-2n76u7dmoq9v8kbvgjfn2g23eqsm16ks.apps.googleusercontent.com'
-)
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
 
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')
 

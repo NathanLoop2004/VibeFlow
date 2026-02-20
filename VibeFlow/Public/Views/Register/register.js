@@ -77,7 +77,7 @@ function togglePassword(inputId, btn) {
 }
 
 /* ── Google Sign-Up (OAuth2 Redirect — sin librería GSI) ── */
-const GOOGLE_CLIENT_ID = '267804810810-2n76u7dmoq9v8kbvgjfn2g23eqsm16ks.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '267804810810-ft6b1qb4bp9arnffa0101t07hf15rutg.apps.googleusercontent.com';
 const REDIRECT_URI     = window.location.origin + '/api/auth/google/callback/';
 
 function googleSignUp() {

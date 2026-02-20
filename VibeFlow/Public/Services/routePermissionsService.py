@@ -245,6 +245,8 @@ API_TO_VIEW_MAP = {
     '/api/modules/': 'view-modules',
     '/api/families/': 'view-families',
     '/api/subfamilies/': 'view-subfamilies',
+    '/api/recordings/': 'view-spectrogram',
+    '/api/shazam/': 'view-shazam',
 }
 
 

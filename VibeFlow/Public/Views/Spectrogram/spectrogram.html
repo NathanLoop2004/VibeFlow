@@ -1,0 +1,134 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espectrograma 3D - VibeFlow</title>
+    <link rel="stylesheet" href="{% static 'Spectrogram/spectrogram.css' %}">
+</head>
+<body>
+
+    <!-- ─── Controles principales ─── -->
+    <div class="card controls-card">
+        <h2>🎙️ Espectrograma en Tiempo Real</h2>
+        <div id="msg-main" class="msg"></div>
+
+        <div class="controls-row">
+            <div class="source-tabs">
+                <button class="tab-btn active" data-tab="mic" onclick="switchTab('mic')">🎤 Micrófono</button>
+                <button class="tab-btn" data-tab="file" onclick="switchTab('file')">📁 Subir Archivo</button>
+            </div>
+        </div>
+
+        <!-- Tab Micrófono -->
+        <div id="tab-mic" class="tab-content active">
+            <div class="controls-row">
+                <button id="btn-start" class="btn btn-primary" onclick="startMic()">▶ Iniciar</button>
+                <button id="btn-stop" class="btn btn-danger" onclick="stopMic()" disabled>⏹ Detener</button>
+                <span id="rec-indicator" class="rec-indicator hidden">🔴 REC <span id="rec-time">00:00</span></span>
+            </div>
+        </div>
+
+        <!-- Tab Archivo -->
+        <div id="tab-file" class="tab-content">
+            <div class="controls-row">
+                <label class="btn btn-secondary file-label">
+                    📂 Seleccionar archivo
+                    <input type="file" id="file-input" accept="audio/*" onchange="loadFile(event)" hidden>
+                </label>
+                <span id="file-name" class="file-name">Ningún archivo seleccionado</span>
+                <button id="btn-play-file" class="btn btn-primary" onclick="playFile()" disabled>▶ Reproducir</button>
+                <button id="btn-stop-file" class="btn btn-danger" onclick="stopFile()" disabled>⏹ Detener</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── Visualización ─── -->
+    <div class="card viz-card">
+        <div class="viz-header">
+            <h3>📊 Espectrograma Waterfall</h3>
+            <div class="viz-controls">
+                <label>Ganancia <input type="range" id="gain-slider" min="1" max="10" value="3" step="0.5"></label>
+                <label>Velocidad <input type="range" id="speed-slider" min="1" max="5" value="2" step="1"></label>
+                <select id="colormap-select">
+                    <option value="inferno">🔥 Inferno</option>
+                    <option value="viridis">🌿 Viridis</option>
+                    <option value="plasma">⚡ Plasma</option>
+                    <option value="cool">❄️ Cool</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Barras de frecuencia en tiempo real -->
+        <canvas id="bars-canvas" width="900" height="120"></canvas>
+
+        <!-- Eje de frecuencia -->
+        <div class="freq-axis" id="freq-axis"></div>
+
+        <!-- Waterfall spectrogram -->
+        <canvas id="waterfall-canvas" width="900" height="300"></canvas>
+
+        <!-- Eje de tiempo (vertical) -->
+        <div class="time-label">⬇ Tiempo</div>
+    </div>
+
+    <!-- ─── Guardar grabación ─── -->
+    <div class="card save-card">
+        <h2>💾 Guardar Grabación</h2>
+        <div id="msg-save" class="msg"></div>
+        <form id="form-save">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nombre de la grabación</label>
+                    <input type="text" id="save-name" required placeholder="Ej: Prueba acústica sala A">
+                </div>
+                <button type="submit" class="btn btn-primary" id="btn-save" disabled>💾 Guardar</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ─── Grabaciones guardadas ─── -->
+    <div class="card">
+        <h2>📋 Mis Grabaciones</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Duración</th>
+                    <th>Formato</th>
+                    <th>Tamaño</th>
+                    <th>Fecha</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="recordings-table"></tbody>
+        </table>
+    </div>
+
+    <!-- ─── Modal editar ─── -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>✏️ Editar Grabación</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="msg-edit" class="msg"></div>
+            <form id="form-edit">
+                <input type="hidden" id="edit_id">
+                <div class="form-group">
+                    <label>Nombre</label>
+                    <input type="text" id="edit_name" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{% static 'Spectrogram/spectrogram.js' %}"></script>
+</body>
+</html>

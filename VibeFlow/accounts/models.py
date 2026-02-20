@@ -8,5 +8,8 @@ from VibeFlow.Public.Models.familiesModel import Family
 from VibeFlow.Public.Models.subfamiliesModel import Subfamily
 from VibeFlow.Public.Models.viewRoutesModel import ViewRoute
 from VibeFlow.Public.Models.routePermissionsModel import RoutePermission
+from VibeFlow.Public.Models.recordingsModel import Recording
+from VibeFlow.Public.Models.songsModel import Song
+from VibeFlow.Public.Models.fingerprintsModel import Fingerprint
 
-__all__ = ['User', 'Role', 'UserRole', 'Module', 'Family', 'Subfamily', 'ViewRoute', 'RoutePermission']
+__all__ = ['User', 'Role', 'UserRole', 'Module', 'Family', 'Subfamily', 'ViewRoute', 'RoutePermission', 'Recording', 'Song', 'Fingerprint']

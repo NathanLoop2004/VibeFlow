@@ -24,6 +24,8 @@ urlpatterns = [
     path('api/modules/', include('VibeFlow.Public.Routes.modulesRouter')),
     path('api/families/', include('VibeFlow.Public.Routes.familiesRouter')),
     path('api/subfamilies/', include('VibeFlow.Public.Routes.subfamiliesRouter')),
+    path('api/recordings/', include('VibeFlow.Public.Routes.recordingsRouter')),
+    path('api/shazam/', include('VibeFlow.Public.Routes.shazamRouter')),
 
     # ─── Vistas HTML dinámicas (se leen de la BD: app.view_routes) ────────
     # Catch-all: busca el url_path en la tabla view_routes y renderiza el template

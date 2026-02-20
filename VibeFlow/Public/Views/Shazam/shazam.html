@@ -1,0 +1,149 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 Shazam MVP - VibeFlow</title>
+    <link rel="stylesheet" href="{% static 'Shazam/shazam.css' %}">
+</head>
+<body>
+
+    <!-- ─── Subir Canción ─── -->
+    <div class="card">
+        <h2>📤 Subir Canción a la Biblioteca</h2>
+        <div id="msg-upload" class="msg"></div>
+        <form id="form-upload">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Título</label>
+                    <input type="text" id="up-title" required placeholder="Nombre de la canción">
+                </div>
+                <div class="form-group">
+                    <label>Artista</label>
+                    <input type="text" id="up-artist" placeholder="Artista (opcional)" value="Desconocido">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Archivo de audio (MP3, WAV, OGG, etc.)</label>
+                <div class="file-drop-zone" id="drop-zone">
+                    <input type="file" id="up-file" accept="audio/*" required hidden>
+                    <div class="drop-content">
+                        <span class="drop-icon">🎵</span>
+                        <span id="drop-text">Arrastra un archivo o haz clic para seleccionar</span>
+                    </div>
+                </div>
+            </div>
+            <div id="upload-progress" class="progress-bar hidden">
+                <div class="progress-fill" id="upload-fill"></div>
+                <span class="progress-text" id="upload-text">Procesando...</span>
+            </div>
+            <button type="submit" class="btn btn-primary" id="btn-upload">📤 Subir y Generar Fingerprints</button>
+        </form>
+    </div>
+
+    <!-- ─── Buscar Canción ─── -->
+    <div class="card search-card">
+        <h2>🔍 Identificar Canción</h2>
+        <div id="msg-search" class="msg"></div>
+        <p class="search-desc">Graba 30 segundos de audio o sube un fragmento para identificar la canción.</p>
+
+        <div class="search-tabs">
+            <button class="stab active" data-stab="mic" onclick="switchSearchTab('mic')">🎤 Micrófono</button>
+            <button class="stab" data-stab="clip" onclick="switchSearchTab('clip')">📁 Subir Fragmento</button>
+        </div>
+
+        <!-- Tab Micrófono -->
+        <div id="stab-mic" class="stab-content active">
+            <div class="mic-area">
+                <button id="btn-listen" class="btn-listen" onclick="startListening()">
+                    <span class="listen-icon">🎤</span>
+                    <span class="listen-text">Toca para escuchar</span>
+                </button>
+                <div id="listen-status" class="listen-status hidden">
+                    <div class="pulse-ring"></div>
+                    <span id="listen-countdown">Escuchando... 5s</span>
+                </div>
+                <canvas id="mini-viz" width="300" height="60"></canvas>
+            </div>
+        </div>
+
+        <!-- Tab Subir fragmento -->
+        <div id="stab-clip" class="stab-content">
+            <div class="form-group">
+                <label class="btn btn-secondary file-label">
+                    📂 Seleccionar fragmento de audio
+                    <input type="file" id="search-file" accept="audio/*" onchange="onSearchFileSelected(event)" hidden>
+                </label>
+                <span id="search-file-name" class="file-name">Ningún archivo</span>
+            </div>
+            <button class="btn btn-primary" id="btn-search-file" onclick="searchFromFile()" disabled>🔍 Buscar</button>
+        </div>
+
+        <!-- Resultado -->
+        <div id="result-panel" class="result-panel hidden">
+            <div class="result-header">
+                <span class="result-icon" id="result-icon">✅</span>
+                <h3 id="result-title">—</h3>
+            </div>
+            <div class="result-details">
+                <p><strong>Artista:</strong> <span id="result-artist">—</span></p>
+                <p><strong>Confianza:</strong> <span id="result-confidence">—</span></p>
+                <p><strong>Matches:</strong> <span id="result-matches">—</span></p>
+            </div>
+            <div id="result-candidates" class="result-candidates"></div>
+        </div>
+    </div>
+
+    <!-- ─── Biblioteca ─── -->
+    <div class="card">
+        <h2>📚 Biblioteca de Canciones</h2>
+        <div style="margin-bottom:12px">
+            <button class="btn btn-secondary" onclick="regenerarTodas()" id="btn-regen">🔄 Regenerar Todos los Fingerprints</button>
+            <span id="regen-status" style="margin-left:12px;font-size:13px;color:#888"></span>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Título</th>
+                    <th>Artista</th>
+                    <th>Duración</th>
+                    <th>Fingerprints</th>
+                    <th>Fecha</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="songs-table"></tbody>
+        </table>
+    </div>
+
+    <!-- ─── Modal editar ─── -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>✏️ Editar Canción</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="msg-edit" class="msg"></div>
+            <form id="form-edit">
+                <input type="hidden" id="edit_id">
+                <div class="form-group">
+                    <label>Título</label>
+                    <input type="text" id="edit_title" required>
+                </div>
+                <div class="form-group">
+                    <label>Artista</label>
+                    <input type="text" id="edit_artist" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{% static 'Shazam/shazam.js' %}"></script>
+</body>
+</html>

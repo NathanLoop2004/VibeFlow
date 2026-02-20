@@ -1,6 +1,9 @@
 """
 shazamController.py - Controlador para el Shazam MVP.
 Endpoints: listar canciones, subir canción, generar fingerprints, buscar.
+
+El audio se almacena en TeraBox (nube, 1 TB gratis).
+Solo los fingerprints (hashes) y metadatos se guardan en la BD.
 """
 
 import json
@@ -9,6 +12,7 @@ from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from VibeFlow.Public.Services import songsService
 from VibeFlow.Public.Services import fingerprintService
+from VibeFlow.Public.Services import teraboxService
 
 
 class ShazamController:
@@ -46,7 +50,7 @@ class ShazamController:
         """
         POST: Sube una canción y genera fingerprints automáticamente.
         Body JSON: { title, artist, audio_base64 (WAV), file_type, file_size, duration_seconds }
-        El frontend convierte cualquier formato a WAV antes de enviar.
+        El audio se sube a TeraBox; solo metadatos y fingerprints van a la BD.
         """
         try:
             body = json.loads(request.body)
@@ -59,15 +63,26 @@ class ShazamController:
             if not audio_b64:
                 return JsonResponse({"status": False, "message": "El audio es requerido"}, status=400)
 
-            # 1. Crear la canción en BD
+            # 1. Decodificar audio
+            wav_bytes = base64.b64decode(audio_b64)
+
+            # 2. Generar fingerprints (antes de guardar nada)
+            fps = fingerprintService.generate_fingerprints(wav_bytes)
+
+            # 3. Crear la canción en BD (sin audio binario)
             result = songsService.create_song(body)
             song_id = result['id']
 
-            # 2. Decodificar audio y generar fingerprints
-            wav_bytes = base64.b64decode(audio_b64)
-            fps = fingerprintService.generate_fingerprints(wav_bytes)
+            # 4. Subir audio a TeraBox
+            try:
+                terabox_path = teraboxService.upload_song(song_id, title, wav_bytes)
+                songsService.update_terabox_path(song_id, terabox_path)
+            except Exception as e:
+                print(f"[TeraBox] Error subiendo audio: {e}")
+                # La canción se creó en BD pero sin audio en TeraBox
+                # Los fingerprints aún se guardan, la canción funciona para búsqueda
 
-            # 3. Guardar fingerprints
+            # 5. Guardar fingerprints en BD
             fp_count = fingerprintService.store_fingerprints(song_id, fps)
 
             return JsonResponse({
@@ -184,13 +199,20 @@ class ShazamController:
     @staticmethod
     @csrf_exempt
     def audio_cancion(request, song_id):
-        """GET: Descarga/reproduce el audio de una canción."""
+        """GET: Descarga/reproduce el audio de una canción (proxy desde TeraBox)."""
         try:
-            result = songsService.get_song_audio(song_id)
-            if not result or not result['audio_data']:
-                return JsonResponse({"status": False, "message": "Audio no disponible"}, status=404)
-            response = HttpResponse(result['audio_data'], content_type=result['file_type'])
-            response['Content-Disposition'] = f'inline; filename="{result["title"]}.wav"'
+            song = songsService.get_song_by_id(song_id)
+            if not song:
+                return JsonResponse({"status": False, "message": "Canción no encontrada"}, status=404)
+
+            terabox_path = song.get('terabox_path')
+            if not terabox_path:
+                return JsonResponse({"status": False, "message": "Audio no disponible (no subido a TeraBox)"}, status=404)
+
+            # Descargar audio desde TeraBox y servirlo al cliente
+            audio_bytes = teraboxService.download_song(terabox_path)
+            response = HttpResponse(audio_bytes, content_type=song.get('file_type', 'audio/wav'))
+            response['Content-Disposition'] = f'inline; filename="{song["title"]}.wav"'
             return response
         except Exception as e:
             return JsonResponse({"status": False, "message": str(e)}, status=500)

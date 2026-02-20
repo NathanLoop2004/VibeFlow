@@ -11,7 +11,7 @@ class Song(models.Model):
     duration_seconds = models.FloatField(null=True, blank=True, help_text="Duración en segundos")
     file_type = models.CharField(max_length=50, default='audio/mpeg', help_text="MIME type")
     file_size = models.IntegerField(null=True, blank=True, help_text="Tamaño en bytes")
-    audio_data = models.BinaryField(null=True, blank=True, help_text="Audio original (binario)")
+    terabox_path = models.CharField(max_length=500, null=True, blank=True, help_text="Ruta del audio en TeraBox")
     fingerprint_count = models.IntegerField(default=0, help_text="Cantidad de fingerprints generados")
 
     created_at = models.DateTimeField(auto_now_add=True)

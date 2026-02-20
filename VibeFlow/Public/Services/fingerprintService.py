@@ -342,29 +342,35 @@ def search_by_fingerprints(fingerprints):
 # ── Regeneración de fingerprints ──────────────────────────────────────
 def regenerate_song(song_id):
     """
-    Regenera los fingerprints de UNA canción usando el audio_data
-    ya almacenado en BD.  No necesita re-subir el archivo.
+    Regenera los fingerprints de UNA canción descargando el audio
+    desde TeraBox.
 
-    1. Lee audio_data binario de la canción.
-    2. Borra fingerprints viejos.
-    3. Genera y guarda fingerprints con el algoritmo actual.
+    1. Lee terabox_path de la canción en BD.
+    2. Descarga el audio WAV desde TeraBox.
+    3. Borra fingerprints viejos.
+    4. Genera y guarda fingerprints con el algoritmo actual.
 
     Retorna cantidad de fingerprints generados.
     """
+    from VibeFlow.Public.Services import teraboxService
+
     with connection.cursor() as cursor:
         cursor.execute(
-            "SELECT id, title, audio_data FROM app.songs WHERE id = %s",
+            "SELECT id, title, terabox_path FROM app.songs WHERE id = %s",
             [song_id],
         )
         row = cursor.fetchone()
         if not row:
             raise ValueError(f"Canción {song_id} no encontrada")
 
-        sid, title, audio_data = row
-        if not audio_data:
-            raise ValueError(f"Canción {song_id} ('{title}') no tiene audio almacenado")
+        sid, title, terabox_path = row
+        if not terabox_path:
+            raise ValueError(
+                f"Canción {song_id} ('{title}') no tiene audio en TeraBox"
+            )
 
-        wav_bytes = bytes(audio_data)
+    # Descargar audio desde TeraBox
+    wav_bytes = teraboxService.download_song(terabox_path)
 
     # Borrar fingerprints anteriores
     with connection.cursor() as cursor:

@@ -215,9 +215,20 @@ function switchSearchTab(tab) {
 }
 
 /* ====================================================================
-   Mic Recording — 5 seconds with countdown + mini visualizer
+   WebSocket URL
+   ==================================================================== */
+function getWsUrl() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    return `${proto}://${location.host}/ws/shazam/`;
+}
+
+/* ====================================================================
+   Mic Recording — streaming en tiempo real vía WebSocket
+   Graba audio del micrófono → convierte a WAV PCM 16-bit en tiempo real
+   → envía chunks binarios por WebSocket → recibe resultados parciales.
    ==================================================================== */
 let isListening = false;
+let activeWs = null;
 
 async function startListening() {
     if (isListening) return;
@@ -232,12 +243,73 @@ async function startListening() {
     btnListen.disabled = true;
     status.classList.remove('hidden');
 
-    try {
-        // Obtener micrófono
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    let vizRunning = true;
+    let stream = null;
+    let audioCtx = null;
+    let songFound = false;
 
-        // Visualizador
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function cleanup() {
+        vizRunning = false;
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        if (audioCtx && audioCtx.state !== 'closed') audioCtx.close();
+        if (activeWs && activeWs.readyState === WebSocket.OPEN) activeWs.close();
+        activeWs = null;
+        ctx.fillStyle = '#0a0a1a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        isListening = false;
+        btnListen.disabled = false;
+        status.classList.add('hidden');
+    }
+
+    try {
+        // 1. Abrir WebSocket
+        const ws = new WebSocket(getWsUrl());
+        activeWs = ws;
+
+        await new Promise((resolve, reject) => {
+            ws.onopen = resolve;
+            ws.onerror = () => reject(new Error('No se pudo conectar al WebSocket'));
+            setTimeout(() => reject(new Error('Timeout conectando WebSocket')), 5000);
+        });
+
+        // Manejar mensajes del servidor
+        ws.onmessage = (event) => {
+            try {
+                const msg = JSON.parse(event.data);
+                console.log('[WS]', msg.type, msg.message || '');
+
+                if (msg.type === 'confirmed') {
+                    songFound = true;
+                    countdown.textContent = '✅ ¡Canción encontrada!';
+                    displayResult({ status: true, data: msg.data, message: msg.message });
+                    cleanup();
+                } else if (msg.type === 'partial') {
+                    countdown.textContent = `⏳ ${msg.message}`;
+                    displayResult({ status: true, data: msg.data, message: msg.message });
+                } else if (msg.type === 'no_match') {
+                    countdown.textContent = '🎤 Sin coincidencias aún...';
+                } else if (msg.type === 'error') {
+                    showMsg('msg-search', msg.message, false);
+                } else if (msg.type === 'status') {
+                    console.log('[WS status]', msg.message);
+                }
+            } catch (e) {
+                console.error('Error parseando mensaje WS:', e);
+            }
+        };
+
+        ws.onclose = () => {
+            if (!songFound && isListening) {
+                countdown.textContent = 'Conexión cerrada';
+                cleanup();
+            }
+        };
+
+        // 2. Obtener micrófono
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        // 3. Visualizador
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const source = audioCtx.createMediaStreamSource(stream);
         const analyser = audioCtx.createAnalyser();
         analyser.fftSize = 256;
@@ -246,8 +318,6 @@ async function startListening() {
         const bufferLength = analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
 
-        // Mini visualizer loop
-        let vizRunning = true;
         function drawViz() {
             if (!vizRunning) return;
             requestAnimationFrame(drawViz);
@@ -266,77 +336,123 @@ async function startListening() {
         }
         drawViz();
 
-        // Grabar con MediaRecorder
-        const mediaRecorder = new MediaRecorder(stream, { mimeType: getSupportedMimeType() });
-        const chunks = [];
-        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+        // 4. Capturar audio con ScriptProcessorNode y enviar WAV PCM por WebSocket
+        //    Usamos un buffer size de 4096 samples → ~93 ms por chunk a 44100 Hz
+        const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+        source.connect(processor);
+        processor.connect(audioCtx.destination);
 
-        mediaRecorder.start();
+        processor.onaudioprocess = (e) => {
+            if (songFound || ws.readyState !== WebSocket.OPEN) return;
 
-        // Countdown 30 → 0
+            // Obtener muestras mono float32
+            const inputData = e.inputBuffer.getChannelData(0);
+
+            // Convertir a PCM 16-bit WAV (con header) para que el server pueda parsear
+            const wavBuffer = float32ToWav(inputData, e.inputBuffer.sampleRate);
+            ws.send(wavBuffer);
+        };
+
+        // 5. Countdown 30 → 0
         let remaining = 30;
-        countdown.textContent = `Escuchando... ${remaining}s`;
+        countdown.textContent = `🎤 Escuchando en vivo... ${remaining}s`;
+
         const timer = setInterval(() => {
+            if (songFound) { clearInterval(timer); return; }
             remaining--;
             if (remaining > 0) {
-                countdown.textContent = `Escuchando... ${remaining}s`;
+                countdown.textContent = `🎤 Escuchando en vivo... ${remaining}s`;
             } else {
-                countdown.textContent = '🔍 Buscando...';
+                countdown.textContent = '🔍 Búsqueda final...';
                 clearInterval(timer);
             }
         }, 1000);
 
-        // Detener después de 30 segundos
-        await new Promise(resolve => setTimeout(resolve, 30000));
-        mediaRecorder.stop();
+        // 6. Esperar hasta 30 s o hasta encontrar canción
+        await new Promise(resolve => {
+            const timeout = setTimeout(resolve, 30000);
+            const checkInterval = setInterval(() => {
+                if (songFound) {
+                    clearTimeout(timeout);
+                    clearInterval(checkInterval);
+                    resolve();
+                }
+            }, 200);
 
-        // Esperar a que termine de guardar chunks
-        await new Promise(resolve => { mediaRecorder.onstop = resolve; });
-
-        // Limpiar
-        vizRunning = false;
-        stream.getTracks().forEach(t => t.stop());
-        ctx.fillStyle = '#0a0a1a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        countdown.textContent = '🔍 Procesando audio...';
-
-        // Convertir chunks a WAV via Web Audio API
-        const blob = new Blob(chunks, { type: mediaRecorder.mimeType });
-        const arrBuf = await blob.arrayBuffer();
-
-        const decodeCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const audioBuffer = await decodeCtx.decodeAudioData(arrBuf);
-        decodeCtx.close();
-        audioCtx.close();
-
-        const wavBuffer = audioBufferToWav(audioBuffer);
-        const wavBase64 = arrayBufferToBase64(wavBuffer);
-
-        countdown.textContent = '🔍 Buscando coincidencias...';
-
-        // Buscar
-        const resp = await fetch(API + 'search/', {
-            method: 'POST',
-            headers: authH({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ audio_base64: wavBase64 })
+            // Limpiar interval al terminar timeout
+            const origResolve = resolve;
+            setTimeout(() => clearInterval(checkInterval), 30500);
         });
 
-        const result = await resp.json();
-        displayResult(result);
+        // Si no se encontró, forzar búsqueda final
+        if (!songFound && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ action: 'search' }));
+            // Esperar respuesta
+            await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+
+        if (!songFound) {
+            displayResult({
+                status: true,
+                data: null,
+                message: 'No se encontró ninguna coincidencia tras 30 segundos de escucha.'
+            });
+        }
 
     } catch (err) {
-        console.error('Mic error:', err);
+        console.error('Mic/WS error:', err);
         if (err.name === 'NotAllowedError') {
             showMsg('msg-search', 'Permiso de micrófono denegado. Habilítalo en la configuración del navegador.', false);
         } else {
-            showMsg('msg-search', 'Error con el micrófono: ' + err.message, false);
+            showMsg('msg-search', 'Error: ' + err.message, false);
         }
     } finally {
-        isListening = false;
-        btnListen.disabled = false;
-        status.classList.add('hidden');
+        cleanup();
     }
+}
+
+/**
+ * Convierte un array Float32 (muestras mono) a un ArrayBuffer WAV PCM 16-bit.
+ * Incluye header WAV completo para que el server pueda parsearlo.
+ */
+function float32ToWav(samples, sampleRate) {
+    const numSamples = samples.length;
+    const bitsPerSample = 16;
+    const numChannels = 1;
+    const byteRate = sampleRate * numChannels * bitsPerSample / 8;
+    const blockAlign = numChannels * bitsPerSample / 8;
+    const dataSize = numSamples * blockAlign;
+    const buffer = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(buffer);
+
+    // RIFF header
+    writeString(view, 0, 'RIFF');
+    view.setUint32(4, 36 + dataSize, true);
+    writeString(view, 8, 'WAVE');
+
+    // fmt chunk
+    writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);             // PCM
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitsPerSample, true);
+
+    // data chunk
+    writeString(view, 36, 'data');
+    view.setUint32(40, dataSize, true);
+
+    // PCM samples
+    let offset = 44;
+    for (let i = 0; i < numSamples; i++) {
+        const s = Math.max(-1, Math.min(1, samples[i]));
+        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        offset += 2;
+    }
+
+    return buffer;
 }
 
 function getSupportedMimeType() {
@@ -466,7 +582,7 @@ async function loadSongs() {
         const tbody = document.getElementById('songs-table');
 
         if (!data.status || !data.data || data.data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#666;">No hay canciones en la biblioteca</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#666;">No hay canciones en la biblioteca</td></tr>';
             return;
         }
 
@@ -477,6 +593,10 @@ async function loadSongs() {
             const dateStr = s.created_at
                 ? new Date(s.created_at).toLocaleDateString('es-ES')
                 : '—';
+            const audioIcon = s.has_audio ? '☁️' : '⚠️';
+            const playBtn = s.has_audio
+                ? `<button class="btn btn-edit" onclick="playSong(${s.id})">▶</button>`
+                : `<button class="btn btn-edit" disabled title="Sin audio en TeraBox">▶</button>`;
             return `
                 <tr>
                     <td>${s.id}</td>
@@ -484,9 +604,10 @@ async function loadSongs() {
                     <td>${escapeHtml(s.artist)}</td>
                     <td>${durMin}</td>
                     <td><span class="badge-fp">${s.fingerprint_count || 0}</span></td>
+                    <td>${audioIcon}</td>
                     <td>${dateStr}</td>
                     <td class="actions">
-                        <button class="btn btn-edit" onclick="playSong(${s.id})">▶</button>
+                        ${playBtn}
                         <button class="btn btn-edit" onclick="openModal(${s.id}, '${escapeAttr(s.title)}', '${escapeAttr(s.artist)}')">✏️</button>
                         <button class="btn btn-danger" style="font-size:12px;padding:6px 12px" onclick="deleteSong(${s.id})">🗑️</button>
                     </td>

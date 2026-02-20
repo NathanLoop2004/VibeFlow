@@ -3,10 +3,37 @@ function getToken() {
     return localStorage.getItem('vf_token') || '';
 }
 
-// Si no hay token, redirigir al login inmediatamente
-if (!getToken()) {
+/** Decodifica el payload de un JWT sin verificar firma */
+function parseJwt(token) {
+    try {
+        const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        return JSON.parse(atob(base64));
+    } catch { return null; }
+}
+
+/** Verifica si el token ya expiró. True = expirado o inválido */
+function isTokenExpired(token) {
+    const payload = parseJwt(token);
+    if (!payload || !payload.exp) return true;
+    return Date.now() >= payload.exp * 1000;
+}
+
+/** Limpia token y redirige al login */
+function forceLogout() {
+    localStorage.removeItem('vf_token');
     window.location.href = '/';
 }
+
+// Si no hay token o está expirado, redirigir al login inmediatamente
+if (!getToken() || isTokenExpired(getToken())) {
+    forceLogout();
+}
+
+// Revisar expiración cada 30 segundos
+setInterval(() => {
+    const t = getToken();
+    if (!t || isTokenExpired(t)) forceLogout();
+}, 30_000);
 
 function authHeaders(extra = {}) {
     return { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json', ...extra };

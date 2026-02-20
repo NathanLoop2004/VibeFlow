@@ -1,6 +1,9 @@
 const API_PERMS = '/api/permissions/';
 let allRoles = [];
 
+function getToken() { return localStorage.getItem('vf_token') || ''; }
+function authH(extra = {}) { return { 'Authorization': 'Bearer ' + getToken(), ...extra }; }
+
 function showMsg(id, text, ok) {
     const el = document.getElementById(id);
     el.textContent = text;
@@ -11,8 +14,8 @@ function showMsg(id, text, ok) {
 
 async function loadSelects() {
     const [rolesRes, routesRes] = await Promise.all([
-        fetch('/api/roles/'),
-        fetch('/api/routes/')
+        fetch('/api/roles/', { headers: authH() }),
+        fetch('/api/routes/', { headers: authH() })
     ]);
     const rolesJson = await rolesRes.json();
     const routesJson = await routesRes.json();
@@ -38,7 +41,7 @@ async function loadPermissions() {
     if (filterRole) {
         url = API_PERMS + 'role/' + filterRole + '/';
     }
-    const res = await fetch(url);
+    const res = await fetch(url, { headers: authH() });
     const json = await res.json();
     const perms = json.data || [];
     const tbody = document.getElementById('perms-table');
@@ -77,7 +80,7 @@ document.getElementById('form-perm').addEventListener('submit', async (e) => {
     };
     const res = await fetch(API_PERMS + 'create/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authH({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(body),
     });
     const data = await res.json();
@@ -87,7 +90,7 @@ document.getElementById('form-perm').addEventListener('submit', async (e) => {
 
 async function deletePerm(id) {
     if (!confirm('¿Eliminar este permiso?')) return;
-    const res = await fetch(API_PERMS + id + '/delete/', { method: 'DELETE' });
+    const res = await fetch(API_PERMS + id + '/delete/', { method: 'DELETE', headers: authH() });
     if (res.ok) loadPermissions();
 }
 

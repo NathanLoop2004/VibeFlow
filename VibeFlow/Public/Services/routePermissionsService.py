@@ -233,3 +233,60 @@ def check_permission(user_id, url_path, method):
         """, [user_id, url_path])
         row = cursor.fetchone()
         return bool(row and row[0])
+
+
+# Mapeo de prefijo API → nombre de ruta vista
+API_TO_VIEW_MAP = {
+    '/api/routes/': 'view-routes',
+    '/api/permissions/': 'route-permissions',
+    '/api/users/': 'view-users',
+    '/api/roles/': 'view-roles',
+    '/api/user-roles/': 'view-user-roles',
+    '/api/modules/': 'view-routes',
+    '/api/families/': 'view-routes',
+    '/api/subfamilies/': 'view-routes',
+}
+
+
+def check_api_permission(role_ids, api_path, perm_field):
+    """
+    Verifica si alguno de los role_ids tiene el permiso (perm_field)
+    para la API solicitada, mapeando la API a su view_route correspondiente.
+    
+    role_ids: lista de int [1, 2, ...]
+    api_path: str, ej: '/api/routes/create/'
+    perm_field: str, ej: 'can_get', 'can_post', 'can_put', 'can_delete'
+    
+    Retorna True si tiene permiso, False si no.
+    """
+    if not role_ids:
+        return False
+
+    # Encontrar a qué vista corresponde esta API
+    view_name = None
+    for prefix, name in API_TO_VIEW_MAP.items():
+        if api_path.startswith(prefix):
+            view_name = name
+            break
+
+    if not view_name:
+        # Si no está en el mapa, permitir acceso (API no controlada)
+        return True
+
+    # Validar que perm_field sea seguro (evitar SQL injection)
+    if perm_field not in ('can_get', 'can_post', 'can_put', 'can_delete'):
+        return False
+
+    placeholders = ','.join(['%s'] * len(role_ids))
+
+    with connection.cursor() as cursor:
+        cursor.execute(f"""
+            SELECT BOOL_OR(rp.{perm_field})
+            FROM app.route_permissions rp
+            JOIN app.view_routes vr ON vr.id = rp.route_id
+            WHERE rp.role_id IN ({placeholders})
+              AND vr.name = %s
+              AND vr.is_active = TRUE
+        """, [*role_ids, view_name])
+        row = cursor.fetchone()
+        return bool(row and row[0])

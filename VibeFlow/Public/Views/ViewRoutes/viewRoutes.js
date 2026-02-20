@@ -1,5 +1,8 @@
 const API = '/api/routes/';
 
+function getToken() { return localStorage.getItem('vf_token') || ''; }
+function authH(extra = {}) { return { 'Authorization': 'Bearer ' + getToken(), ...extra }; }
+
 function showMsg(id, text, ok) {
     const el = document.getElementById(id);
     el.textContent = text;
@@ -10,7 +13,7 @@ function showMsg(id, text, ok) {
 
 /* ── Carga de selects en cascada ── */
 async function loadModuleSelect() {
-    const res = await fetch('/api/modules/');
+    const res = await fetch('/api/modules/', { headers: authH() });
     const json = await res.json();
     const modules = json.data || [];
     const sel = document.getElementById('module_id');
@@ -29,7 +32,7 @@ document.getElementById('module_id').addEventListener('change', async function (
         famSel.disabled = true;
         return;
     }
-    const res = await fetch('/api/families/module/' + this.value + '/');
+    const res = await fetch('/api/families/module/' + this.value + '/', { headers: authH() });
     const json = await res.json();
     const families = json.data || [];
     famSel.innerHTML = '<option value="">-- Sin familia --</option>' +
@@ -44,7 +47,7 @@ document.getElementById('family_id').addEventListener('change', async function (
         sfSel.disabled = true;
         return;
     }
-    const res = await fetch('/api/subfamilies/family/' + this.value + '/');
+    const res = await fetch('/api/subfamilies/family/' + this.value + '/', { headers: authH() });
     const json = await res.json();
     const sfs = json.data || [];
     sfSel.innerHTML = '<option value="">-- Sin subfamilia --</option>' +
@@ -56,7 +59,7 @@ document.getElementById('family_id').addEventListener('change', async function (
 let routesCache = [];
 
 async function loadRoutes() {
-    const res = await fetch(API);
+    const res = await fetch(API, { headers: authH() });
     const json = await res.json();
     routesCache = json.data || [];
     const tbody = document.getElementById('routes-table');
@@ -95,7 +98,7 @@ document.getElementById('form-route').addEventListener('submit', async (e) => {
     };
     const res = await fetch(API + 'create/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authH({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(body),
     });
     const data = await res.json();
@@ -112,19 +115,19 @@ document.getElementById('form-route').addEventListener('submit', async (e) => {
 });
 
 async function toggleRoute(id) {
-    const res = await fetch(API + id + '/toggle/', { method: 'PATCH' });
+    const res = await fetch(API + id + '/toggle/', { method: 'PATCH', headers: authH() });
     if (res.ok) loadRoutes();
 }
 
 async function deleteRoute(id) {
     if (!confirm('¿Eliminar esta ruta?')) return;
-    const res = await fetch(API + id + '/delete/', { method: 'DELETE' });
+    const res = await fetch(API + id + '/delete/', { method: 'DELETE', headers: authH() });
     if (res.ok) loadRoutes();
 }
 
 /* ── Modal Editar ── */
 async function loadEditModuleSelect() {
-    const res = await fetch('/api/modules/');
+    const res = await fetch('/api/modules/', { headers: authH() });
     const json = await res.json();
     const modules = json.data || [];
     const sel = document.getElementById('edit_module_id');
@@ -142,7 +145,7 @@ document.getElementById('edit_module_id').addEventListener('change', async funct
         famSel.disabled = true;
         return;
     }
-    const res = await fetch('/api/families/module/' + this.value + '/');
+    const res = await fetch('/api/families/module/' + this.value + '/', { headers: authH() });
     const json = await res.json();
     const families = json.data || [];
     famSel.innerHTML = '<option value="">-- Sin familia --</option>' +
@@ -157,7 +160,7 @@ document.getElementById('edit_family_id').addEventListener('change', async funct
         sfSel.disabled = true;
         return;
     }
-    const res = await fetch('/api/subfamilies/family/' + this.value + '/');
+    const res = await fetch('/api/subfamilies/family/' + this.value + '/', { headers: authH() });
     const json = await res.json();
     const sfs = json.data || [];
     sfSel.innerHTML = '<option value="">-- Sin subfamilia --</option>' +
@@ -233,7 +236,7 @@ document.getElementById('form-edit').addEventListener('submit', async (e) => {
     };
     const res = await fetch(API + id + '/update/', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authH({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(body),
     });
     const data = await res.json();

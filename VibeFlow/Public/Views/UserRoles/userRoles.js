@@ -1,3 +1,6 @@
+function getToken() { return localStorage.getItem('vf_token') || ''; }
+function authH(extra = {}) { return { 'Authorization': 'Bearer ' + getToken(), ...extra }; }
+
 function showMsg(id, text, ok) {
     const el = document.getElementById(id);
     el.textContent = text;
@@ -7,7 +10,7 @@ function showMsg(id, text, ok) {
 }
 
 async function loadSelects() {
-    const [usersRes, rolesRes] = await Promise.all([fetch('/api/users/'), fetch('/api/roles/')]);
+    const [usersRes, rolesRes] = await Promise.all([fetch('/api/users/', { headers: authH() }), fetch('/api/roles/', { headers: authH() })]);
     const usersJson = await usersRes.json();
     const rolesJson = await rolesRes.json();
     const users = usersJson.data || [];
@@ -23,7 +26,7 @@ async function loadSelects() {
 }
 
 async function loadUserRoles() {
-    const res = await fetch('/api/user-roles/');
+    const res = await fetch('/api/user-roles/', { headers: authH() });
     const json = await res.json();
     const data = json.data || [];
     const tbody = document.getElementById('ur-table');
@@ -42,7 +45,7 @@ document.getElementById('form-ur').addEventListener('submit', async (e) => {
         user_id: document.getElementById('user_id').value,
         role_id: parseInt(document.getElementById('role_id').value),
     };
-    const res = await fetch('/api/user-roles/assign/', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+    const res = await fetch('/api/user-roles/assign/', { method: 'POST', headers: authH({'Content-Type': 'application/json'}), body: JSON.stringify(body) });
     const data = await res.json();
     if (res.ok) { showMsg('msg-ur', data.message, true); e.target.reset(); loadUserRoles(); }
     else { showMsg('msg-ur', data.message || data.error, false); }
@@ -50,7 +53,7 @@ document.getElementById('form-ur').addEventListener('submit', async (e) => {
 
 async function deleteUR(userId, roleId) {
     if (!confirm('¿Eliminar esta asignación?')) return;
-    const res = await fetch(`/api/user-roles/${userId}/${roleId}/delete/`, { method: 'DELETE' });
+    const res = await fetch(`/api/user-roles/${userId}/${roleId}/delete/`, { method: 'DELETE', headers: authH() });
     if (res.ok) loadUserRoles();
 }
 

@@ -35,6 +35,10 @@ form.addEventListener('submit', async (e) => {
         const json = await res.json();
 
         if (json.status) {
+            // Guardar token JWT en localStorage
+            if (json.token) {
+                localStorage.setItem('vf_token', json.token);
+            }
             showMessage(json.message, 'success');
             // Redirigir al panel después de 1 s
             setTimeout(() => {

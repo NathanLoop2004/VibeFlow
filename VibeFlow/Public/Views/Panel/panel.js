@@ -1,3 +1,12 @@
+/* ── JWT Helper ── */
+function getToken() {
+    return localStorage.getItem('vf_token') || '';
+}
+
+function authHeaders(extra = {}) {
+    return { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json', ...extra };
+}
+
 function loadView(urlPath, el) {
     document.getElementById('view-frame').src = '/' + urlPath;
     document.querySelectorAll('#nav-menu a.nav-link').forEach(a => a.classList.remove('active'));
@@ -138,7 +147,17 @@ function renderNav(routes) {
 
 async function loadMenu() {
     try {
-        const res = await fetch('/api/auth/my-routes/');
+        const res = await fetch('/api/auth/my-routes/', {
+            headers: { 'Authorization': 'Bearer ' + getToken() }
+        });
+
+        if (res.status === 401) {
+            // Token expirado o inválido → redirigir al login
+            localStorage.removeItem('vf_token');
+            window.location.href = '/';
+            return;
+        }
+
         const json = await res.json();
         const routes = json.data || [];
         const nav = document.getElementById('nav-menu');

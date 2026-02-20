@@ -7,6 +7,7 @@ import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from VibeFlow.Public.Services import usersService, rolesService, userRolesService, routePermissionsService
+from VibeFlow.Public.Services import jwtService
 
 
 class AuthController:
@@ -39,13 +40,20 @@ class AuthController:
                     "message": "Credenciales inválidas o usuario inactivo"
                 }, status=401)
 
-            # Guardar sesión (como Express req.session.user)
+            # Obtener roles del usuario
+            user_roles = userRolesService.get_roles_by_user(usuario['id'])
+
+            # Generar token JWT con roles
+            token = jwtService.generate_token(usuario, roles=user_roles)
+
+            # Guardar sesión (compatibilidad con vistas server-side)
             request.session['user'] = usuario
             request.session['is_authenticated'] = True
 
             return JsonResponse({
                 "status": True,
                 "data": usuario,
+                "token": token,
                 "message": "Login exitoso"
             })
         except Exception as e:
@@ -130,7 +138,18 @@ class AuthController:
     def my_routes(request):
         """GET: Devuelve las rutas que el usuario en sesión puede ver (can_get=true)."""
         try:
-            user = request.session.get('user')
+            # Intentar JWT primero, luego sesión
+            user = None
+            auth_header = request.headers.get('Authorization', '')
+            if auth_header.startswith('Bearer '):
+                token = auth_header[7:]
+                payload = jwtService.verify_token(token)
+                if payload:
+                    user = {'id': payload['user_id'], 'username': payload['username']}
+
+            if not user:
+                user = request.session.get('user')
+
             if not user:
                 return JsonResponse({
                     "status": False,

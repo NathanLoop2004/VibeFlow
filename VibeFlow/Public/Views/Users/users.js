@@ -1,5 +1,8 @@
 const API = '/api/users/';
 
+function getToken() { return localStorage.getItem('vf_token') || ''; }
+function authH(extra = {}) { return { 'Authorization': 'Bearer ' + getToken(), ...extra }; }
+
 function showMsg(id, text, ok) {
     const el = document.getElementById(id);
     el.textContent = text;
@@ -9,7 +12,7 @@ function showMsg(id, text, ok) {
 }
 
 async function loadUsers() {
-    const res = await fetch(API);
+    const res = await fetch(API, { headers: authH() });
     const json = await res.json();
     const users = json.data || [];
     const tbody = document.getElementById('users-table');
@@ -36,7 +39,7 @@ document.getElementById('form-user').addEventListener('submit', async (e) => {
         is_verified: document.getElementById('is_verified').checked,
         is_superuser: document.getElementById('is_superuser').checked,
     };
-    const res = await fetch(API + 'create/', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+    const res = await fetch(API + 'create/', { method: 'POST', headers: authH({'Content-Type': 'application/json'}), body: JSON.stringify(body) });
     const data = await res.json();
     if (res.ok) { showMsg('msg-user', data.message, true); e.target.reset(); loadUsers(); }
     else { showMsg('msg-user', data.message || data.error, false); }
@@ -44,7 +47,7 @@ document.getElementById('form-user').addEventListener('submit', async (e) => {
 
 async function deleteUser(id) {
     if (!confirm('¿Eliminar este usuario?')) return;
-    const res = await fetch(API + id + '/delete/', { method: 'DELETE' });
+    const res = await fetch(API + id + '/delete/', { method: 'DELETE', headers: authH() });
     if (res.ok) loadUsers();
 }
 

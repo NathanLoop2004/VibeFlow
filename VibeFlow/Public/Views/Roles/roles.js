@@ -1,5 +1,8 @@
 const API = '/api/roles/';
 
+function getToken() { return localStorage.getItem('vf_token') || ''; }
+function authH(extra = {}) { return { 'Authorization': 'Bearer ' + getToken(), ...extra }; }
+
 function showMsg(id, text, ok) {
     const el = document.getElementById(id);
     el.textContent = text;
@@ -9,7 +12,7 @@ function showMsg(id, text, ok) {
 }
 
 async function loadRoles() {
-    const res = await fetch(API);
+    const res = await fetch(API, { headers: authH() });
     const json = await res.json();
     const roles = json.data || [];
     const tbody = document.getElementById('roles-table');
@@ -29,7 +32,7 @@ document.getElementById('form-role').addEventListener('submit', async (e) => {
         name: document.getElementById('name').value,
         description: document.getElementById('description').value,
     };
-    const res = await fetch(API + 'create/', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+    const res = await fetch(API + 'create/', { method: 'POST', headers: authH({'Content-Type': 'application/json'}), body: JSON.stringify(body) });
     const data = await res.json();
     if (res.ok) { showMsg('msg-role', data.message, true); e.target.reset(); loadRoles(); }
     else { showMsg('msg-role', data.message || data.error, false); }
@@ -37,7 +40,7 @@ document.getElementById('form-role').addEventListener('submit', async (e) => {
 
 async function deleteRole(id) {
     if (!confirm('¿Eliminar este rol?')) return;
-    const res = await fetch(API + id + '/delete/', { method: 'DELETE' });
+    const res = await fetch(API + id + '/delete/', { method: 'DELETE', headers: authH() });
     if (res.ok) loadRoles();
 }
 

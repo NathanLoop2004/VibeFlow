@@ -55,8 +55,8 @@ body {
 /* ── Cards ── */
 .cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
     margin-bottom: 48px;
 }
 
@@ -140,6 +140,12 @@ body {
 
 .news-badge.improve {
     background: #2563eb;
+    color: #fff;
+}
+
+/* Badges para v1.1.0 */
+.news-badge {
+    background: #7c3aed;
     color: #fff;
 }
 

@@ -19,8 +19,18 @@
         <section class="cards">
             <div class="card">
                 <div class="card-icon">🔐</div>
-                <h3>Seguridad</h3>
-                <p>Gestiona permisos de rutas y controla el acceso con roles y autenticación JWT.</p>
+                <h3>Seguridad RLS</h3>
+                <p>Row Level Security en Supabase + JWT. Control de acceso a nivel de fila.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">🎙️</div>
+                <h3>WebSocket Streaming</h3>
+                <p>Audio en tiempo real para identificación de canciones con latencia mínima.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">☁️</div>
+                <h3>TeraBox (1TB)</h3>
+                <p>Almacenamiento en nube gratuito. Gestión automática de archivos de audio.</p>
             </div>
             <div class="card">
                 <div class="card-icon">🗺️</div>
@@ -32,35 +42,40 @@
                 <h3>Usuarios</h3>
                 <p>Crea usuarios, asigna roles y gestiona los accesos de tu equipo fácilmente.</p>
             </div>
+            <div class="card">
+                <div class="card-icon">🎵</div>
+                <h3>Shazam</h3>
+                <p>Identifica canciones usando streaming WebSocket con fingerprints avanzados.</p>
+            </div>
         </section>
 
         <!-- Novedades -->
         <section class="news">
-            <h2>📢 Novedades</h2>
+            <h2>📢 Novedades v1.1.0</h2>
             <ul class="news-list">
                 <li>
-                    <span class="news-badge new">Nuevo</span>
-                    <strong>Soporte HTTPS + HTTP</strong> &mdash; Servidor dual con certificado SSL. Accede por HTTP (:8000) o HTTPS (:8443).
+                    <span class="news-badge new">WebSocket</span>
+                    <strong>Audio Streaming en Tiempo Real</strong> &mdash; Django Channels + Daphne. Identifica canciones con latencia mínima.
                 </li>
                 <li>
-                    <span class="news-badge new">Nuevo</span>
-                    <strong>Google Sign-In</strong> &mdash; Inicia sesión o regístrate con tu cuenta de Google en un clic.
+                    <span class="news-badge new">☁️ TeraBox</span>
+                    <strong>Almacenamiento de Audio Gratis</strong> &mdash; 1TB en la nube. Base de datos optimizada solo con fingerprints.
                 </li>
                 <li>
-                    <span class="news-badge new">Nuevo</span>
-                    <strong>Autenticación JWT</strong> &mdash; Tokens seguros con expiración diferenciada por rol.
+                    <span class="news-badge new">🔐 RLS</span>
+                    <strong>Row Level Security en Supabase</strong> &mdash; Seguridad a nivel de fila + políticas de acceso granular.
                 </li>
                 <li>
-                    <span class="news-badge new">Nuevo</span>
-                    <strong>Jerarquía de navegación</strong> &mdash; Módulos, familias y subfamilias organizan tu menú.
+                    <span class="news-badge improve">Optimización</span>
+                    <strong>Índices Limpiados</strong> &mdash; Eliminados ~40 índices duplicados. Base de datos más rápida y limpia.
                 </li>
                 <li>
-                    <span class="news-badge improve">Mejora</span>
-                    <strong>Permisos granulares</strong> &mdash; Control GET / POST / PUT / DELETE por ruta y rol.
+                    <span class="news-badge new">API</span>
+                    <strong>TeraBox Service</strong> &mdash; Nuevo servicio para upload/download de audio con auth por cookie.
                 </li>
                 <li>
-                    <span class="news-badge improve">Mejora</span>
-                    <strong>Panel responsivo</strong> &mdash; Navegación lateral con secciones colapsables.
+                    <span class="news-badge improve">UI</span>
+                    <strong>Biblioteca Interactiva</strong> &mdash; Nueva columna "Audio" con estado de almacenamiento (☁️/⚠️).
                 </li>
             </ul>
         </section>

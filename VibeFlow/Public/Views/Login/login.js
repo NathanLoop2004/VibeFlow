@@ -80,49 +80,47 @@ function togglePassword() {
     }
 }
 
-/* ── Google Sign-In (OAuth2 Popup - sin FedCM) ── */
+/* ── Google Sign-In (Botón nativo renderizado por Google) ── */
 const GOOGLE_CLIENT_ID = '267804810810-2n76u7dmoq9v8kbvgjfn2g23eqsm16ks.apps.googleusercontent.com';
 
-function googleSignIn() {
-    console.log('[GoogleSignIn] Iniciando...');
-
-    if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
-        showMessage('Cargando Google Sign-In, intenta de nuevo en unos segundos...', 'error');
-        console.warn('[GoogleSignIn] google.accounts.oauth2 no disponible aún');
+function initGoogleButton() {
+    if (typeof google === 'undefined' || !google.accounts) {
+        // La librería aún no cargó, reintentar en 500ms
+        setTimeout(initGoogleButton, 500);
         return;
     }
 
-    try {
-        const client = google.accounts.oauth2.initTokenClient({
-            client_id: GOOGLE_CLIENT_ID,
-            scope: 'email profile',
-            callback: handleGoogleToken,
-            error_callback: (err) => {
-                console.error('[GoogleSignIn] error_callback:', err);
-                showMessage('No se pudo abrir la ventana de Google. Permite pop-ups e intenta de nuevo.', 'error');
-            },
-        });
+    console.log('[GoogleSignIn] Inicializando botón nativo...');
 
-        console.log('[GoogleSignIn] requestAccessToken...');
-        client.requestAccessToken();
-    } catch (e) {
-        console.error('[GoogleSignIn] Excepción:', e);
-        showMessage('Error al iniciar Google Sign-In: ' + e.message, 'error');
-    }
+    google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCredential,
+        ux_mode: 'popup',
+    });
+
+    google.accounts.id.renderButton(
+        document.getElementById('g_signin_btn'),
+        {
+            theme: 'filled_black',
+            size: 'large',
+            width: 356,
+            text: 'signin_with',
+            shape: 'rectangular',
+            logo_alignment: 'left',
+        }
+    );
+
+    console.log('[GoogleSignIn] Botón renderizado OK');
 }
 
-async function handleGoogleToken(tokenResponse) {
-    console.log('[GoogleSignIn] Callback recibido', tokenResponse);
+// Inicializar cuando la página cargue
+window.addEventListener('load', initGoogleButton);
 
-    if (tokenResponse.error) {
-        console.warn('[GoogleSignIn] Error en tokenResponse:', tokenResponse.error);
-        showMessage('Google Sign-In cancelado o fallido', 'error');
-        return;
-    }
+async function handleGoogleCredential(response) {
+    console.log('[GoogleSignIn] Credential recibido');
 
-    if (!tokenResponse.access_token) {
-        console.warn('[GoogleSignIn] No se recibió access_token');
-        showMessage('No se obtuvo token de Google', 'error');
+    if (!response.credential) {
+        showMessage('No se recibió credencial de Google', 'error');
         return;
     }
 
@@ -137,12 +135,12 @@ async function handleGoogleToken(tokenResponse) {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCSRFToken(),
             },
-            body: JSON.stringify({ access_token: tokenResponse.access_token }),
+            body: JSON.stringify({ credential: response.credential }),
         });
 
-        console.log('[GoogleSignIn] Respuesta backend status:', res.status);
+        console.log('[GoogleSignIn] Backend status:', res.status);
         const json = await res.json();
-        console.log('[GoogleSignIn] Respuesta backend:', json);
+        console.log('[GoogleSignIn] Backend response:', json);
 
         if (json.status) {
             if (json.token) {

@@ -76,7 +76,7 @@ function togglePassword(inputId, btn) {
     }
 }
 
-/* ── Google Sign-Up (OAuth2 Popup - sin FedCM) ── */
+/* ── Google Sign-Up (Botón nativo renderizado por Google) ── */
 const GOOGLE_CLIENT_ID = '267804810810-2n76u7dmoq9v8kbvgjfn2g23eqsm16ks.apps.googleusercontent.com';
 
 function getCSRFToken() {
@@ -86,46 +86,42 @@ function getCSRFToken() {
     return cookie ? cookie.split('=')[1] : '';
 }
 
-function googleSignUp() {
-    console.log('[GoogleSignUp] Iniciando...');
-
-    if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
-        showMessage('Cargando Google Sign-In, intenta de nuevo en unos segundos...', 'error');
-        console.warn('[GoogleSignUp] google.accounts.oauth2 no disponible aún');
+function initGoogleButton() {
+    if (typeof google === 'undefined' || !google.accounts) {
+        setTimeout(initGoogleButton, 500);
         return;
     }
 
-    try {
-        const client = google.accounts.oauth2.initTokenClient({
-            client_id: GOOGLE_CLIENT_ID,
-            scope: 'email profile',
-            callback: handleGoogleToken,
-            error_callback: (err) => {
-                console.error('[GoogleSignUp] error_callback:', err);
-                showMessage('No se pudo abrir la ventana de Google. Permite pop-ups e intenta de nuevo.', 'error');
-            },
-        });
+    console.log('[GoogleSignUp] Inicializando botón nativo...');
 
-        console.log('[GoogleSignUp] requestAccessToken...');
-        client.requestAccessToken();
-    } catch (e) {
-        console.error('[GoogleSignUp] Excepción:', e);
-        showMessage('Error al iniciar Google Sign-In: ' + e.message, 'error');
-    }
+    google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCredential,
+        ux_mode: 'popup',
+    });
+
+    google.accounts.id.renderButton(
+        document.getElementById('g_signup_btn'),
+        {
+            theme: 'filled_black',
+            size: 'large',
+            width: 356,
+            text: 'signup_with',
+            shape: 'rectangular',
+            logo_alignment: 'left',
+        }
+    );
+
+    console.log('[GoogleSignUp] Botón renderizado OK');
 }
 
-async function handleGoogleToken(tokenResponse) {
-    console.log('[GoogleSignUp] Callback recibido', tokenResponse);
+window.addEventListener('load', initGoogleButton);
 
-    if (tokenResponse.error) {
-        console.warn('[GoogleSignUp] Error en tokenResponse:', tokenResponse.error);
-        showMessage('Google Sign-In cancelado o fallido', 'error');
-        return;
-    }
+async function handleGoogleCredential(response) {
+    console.log('[GoogleSignUp] Credential recibido');
 
-    if (!tokenResponse.access_token) {
-        console.warn('[GoogleSignUp] No se recibió access_token');
-        showMessage('No se obtuvo token de Google', 'error');
+    if (!response.credential) {
+        showMessage('No se recibió credencial de Google', 'error');
         return;
     }
 
@@ -140,12 +136,12 @@ async function handleGoogleToken(tokenResponse) {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCSRFToken(),
             },
-            body: JSON.stringify({ access_token: tokenResponse.access_token }),
+            body: JSON.stringify({ credential: response.credential }),
         });
 
-        console.log('[GoogleSignUp] Respuesta backend status:', res.status);
+        console.log('[GoogleSignUp] Backend status:', res.status);
         const json = await res.json();
-        console.log('[GoogleSignUp] Respuesta backend:', json);
+        console.log('[GoogleSignUp] Backend response:', json);
 
         if (json.status) {
             if (json.token) {
